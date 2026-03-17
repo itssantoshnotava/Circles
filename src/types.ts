@@ -78,31 +78,3 @@ export interface RoomMessage {
   message: string;
   createdAt: any;
 }
-
-export interface FriendRequest {
-  id: string;
-  fromUserId: string;
-  toUserId: string;
-  status: 'pending' | 'accepted' | 'rejected';
-  createdAt: any;
-  fromUsername?: string;
-  fromProfilePic?: string;
-}
-
-export interface Friend {
-  id: string;
-  userId: string;
-  friendId: string;
-  createdAt: any;
-  friendProfile?: UserProfile;
-}
-
-export interface Notification {
-  id: string;
-  type: 'friend_request' | 'system';
-  fromUserId?: string;
-  toUserId: string;
-  message: string;
-  createdAt: any;
-  read: boolean;
-}

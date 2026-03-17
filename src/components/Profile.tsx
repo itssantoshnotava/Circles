@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { GlassCard } from './GlassCard';
 import { Button } from './Button';
-import { User, Mail, GraduationCap, BookOpen, Target, LogOut, Edit2, Check, X, Calendar, Users, UserPlus } from 'lucide-react';
+import { User, Mail, GraduationCap, BookOpen, Target, LogOut, Edit2, Check, X, Calendar } from 'lucide-react';
 import { OnboardingData, UserProfile } from '../types';
-import { getCurrentUserProfile, logoutUser, getFriends } from '../services/firebaseService';
-import { StaticAvatar } from './StaticAvatar';
-import { UserProfilePreview } from './UserProfilePreview';
+import { getCurrentUserProfile, logoutUser } from '../services/firebaseService';
 
 interface ProfileProps {
   onboardingData: OnboardingData;
@@ -17,9 +15,6 @@ export const Profile: React.FC<ProfileProps> = ({ onboardingData, onLogout }) =>
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState('');
-  const [friends, setFriends] = useState<UserProfile[]>([]);
-  const [loadingFriends, setLoadingFriends] = useState(true);
-  const [selectedFriend, setSelectedFriend] = useState<UserProfile | null>(null);
 
   useEffect(() => {
     console.log("Profile loaded");
@@ -27,23 +22,6 @@ export const Profile: React.FC<ProfileProps> = ({ onboardingData, onLogout }) =>
     setUser(profile);
     setEditedName(profile.displayName || '');
   }, []);
-
-  useEffect(() => {
-    const fetchFriends = async () => {
-      if (user) {
-        setLoadingFriends(true);
-        try {
-          const f = await getFriends(user.uid);
-          setFriends(f);
-        } catch (error) {
-          console.error("Error fetching friends:", error);
-        } finally {
-          setLoadingFriends(false);
-        }
-      }
-    };
-    fetchFriends();
-  }, [user]);
 
   const handleLogout = async () => {
     await logoutUser();
@@ -65,11 +43,18 @@ export const Profile: React.FC<ProfileProps> = ({ onboardingData, onLogout }) =>
       <GlassCard className="p-8 border-white/5 flex flex-col items-center text-center space-y-6">
         <div className="relative group">
           <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-emerald-500/20 shadow-2xl shadow-emerald-500/10">
-            <StaticAvatar 
-              src={user.photoURL} 
-              alt={user.displayName || 'User'} 
-              className="w-full h-full"
-            />
+            {user.photoURL ? (
+              <img 
+                src={user.photoURL} 
+                alt={user.displayName || 'User'} 
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="w-full h-full bg-emerald-500/10 flex items-center justify-center">
+                <User className="w-12 h-12 text-emerald-500/40" />
+              </div>
+            )}
           </div>
           {user.isGuest && (
             <div className="absolute -bottom-2 -right-2 bg-emerald-500 text-black text-[10px] font-black px-2 py-1 rounded-full uppercase tracking-tighter">
@@ -116,53 +101,6 @@ export const Profile: React.FC<ProfileProps> = ({ onboardingData, onLogout }) =>
             <span className="text-sm">{user.email}</span>
           </div>
         </div>
-      </GlassCard>
-
-      {/* Friends Section */}
-      <GlassCard className="p-6 border-white/5 space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3 text-emerald-400">
-            <Users className="w-5 h-5" />
-            <span className="text-xs font-black uppercase tracking-widest">Friends ({friends.length})</span>
-          </div>
-        </div>
-
-        {loadingFriends ? (
-          <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="w-16 h-16 rounded-2xl bg-white/5 animate-pulse flex-shrink-0" />
-            ))}
-          </div>
-        ) : friends.length > 0 ? (
-          <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar">
-            {friends.map(friend => (
-              <button 
-                key={friend.uid}
-                onClick={() => setSelectedFriend(friend)}
-                className="flex flex-col items-center gap-2 group flex-shrink-0"
-              >
-                <div className="relative">
-                  <StaticAvatar 
-                    src={friend.photoURL} 
-                    alt={friend.displayName || 'Friend'} 
-                    className="w-16 h-16 rounded-2xl border-2 border-white/5 group-hover:border-emerald-500/50 transition-all"
-                  />
-                  <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center border-2 border-[#050505]">
-                    <Check className="w-2.5 h-2.5 text-black" />
-                  </div>
-                </div>
-                <span className="text-[10px] font-black text-white/40 group-hover:text-emerald-500 transition-colors truncate w-16 text-center">
-                  @{friend.username}
-                </span>
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8 bg-white/[0.02] rounded-2xl border border-dashed border-white/10">
-            <UserPlus className="w-8 h-8 mx-auto mb-2 text-white/10" />
-            <p className="text-[10px] font-black uppercase tracking-widest text-white/20">No friends yet. Start searching!</p>
-          </div>
-        )}
       </GlassCard>
 
       {/* Tag Section: Quick Pills */}
@@ -266,16 +204,6 @@ export const Profile: React.FC<ProfileProps> = ({ onboardingData, onLogout }) =>
           Logout from Circles
         </button>
       </div>
-
-      <AnimatePresence>
-        {selectedFriend && user && (
-          <UserProfilePreview 
-            user={selectedFriend} 
-            currentUser={user}
-            onClose={() => setSelectedFriend(null)}
-          />
-        )}
-      </AnimatePresence>
     </div>
   );
 };
