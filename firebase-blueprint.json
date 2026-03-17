@@ -66,6 +66,44 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["userId", "type", "subject", "completedChapters"]
+    },
+    "FriendRequest": {
+      "title": "FriendRequest",
+      "description": "A request to be friends",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "fromUserId": { "type": "string" },
+        "toUserId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["fromUserId", "toUserId", "status", "createdAt"]
+    },
+    "Friend": {
+      "title": "Friend",
+      "description": "A friendship relationship",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "friendId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "friendId", "createdAt"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "User notification",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["friend_request", "system"] },
+        "message": { "type": "string" },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "type", "message", "read", "createdAt"]
     }
   },
   "firestore": {
@@ -84,6 +122,18 @@
     "/progress/{progressId}": {
       "schema": "Progress",
       "description": "User progress data"
+    },
+    "/friendRequests/{requestId}": {
+      "schema": "FriendRequest",
+      "description": "Friend requests"
+    },
+    "/friends/{friendshipId}": {
+      "schema": "Friend",
+      "description": "Friendship records"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "User notifications"
     }
   }
 }
