@@ -1,42 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GlassCard } from './GlassCard';
-import { Search as SearchIcon, User, UserPlus, Users, Loader2 } from 'lucide-react';
-import { searchUsers } from '../services/firebaseService';
-import { UserProfile } from '../types';
-import { StaticAvatar } from './StaticAvatar';
-import { UserProfilePreview } from './UserProfilePreview';
+import { Search as SearchIcon, User, UserPlus, Users } from 'lucide-react';
 
-interface SearchProps {
-  currentUser: UserProfile;
-}
-
-export const Search: React.FC<SearchProps> = ({ currentUser }) => {
+export const Search: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [results, setResults] = useState<UserProfile[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
-
-  useEffect(() => {
-    const delayDebounceFn = setTimeout(async () => {
-      if (searchQuery.trim().length >= 2) {
-        setLoading(true);
-        try {
-          const users = await searchUsers(searchQuery);
-          // Filter out current user
-          setResults(users.filter(u => u.uid !== currentUser.uid));
-        } catch (error) {
-          console.error("Search error:", error);
-        } finally {
-          setLoading(false);
-        }
-      } else {
-        setResults([]);
-      }
-    }, 500);
-
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery, currentUser.uid]);
 
   return (
     <div className="w-full max-w-2xl space-y-8">
@@ -47,11 +15,7 @@ export const Search: React.FC<SearchProps> = ({ currentUser }) => {
 
       <div className="relative group">
         <div className="absolute inset-y-0 left-6 flex items-center pointer-events-none">
-          {loading ? (
-            <Loader2 className="w-5 h-5 text-emerald-500 animate-spin" />
-          ) : (
-            <SearchIcon className="w-5 h-5 text-white/20 group-focus-within:text-emerald-500 transition-colors" />
-          )}
+          <SearchIcon className="w-5 h-5 text-white/20 group-focus-within:text-emerald-500 transition-colors" />
         </div>
         <input
           type="text"
@@ -60,73 +24,62 @@ export const Search: React.FC<SearchProps> = ({ currentUser }) => {
           placeholder="Enter username (e.g. alex, studyking)"
           className="w-full bg-white/[0.03] backdrop-blur-md border border-white/10 rounded-3xl py-6 pl-16 pr-8 text-lg font-bold placeholder:text-white/10 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all shadow-2xl"
         />
+        <div className="absolute inset-y-0 right-6 flex items-center">
+          <div className="px-3 py-1 bg-white/5 rounded-lg border border-white/5 text-[10px] font-black text-white/20 uppercase tracking-widest">
+            Username Only
+          </div>
+        </div>
       </div>
 
       <div className="space-y-12">
         <div className="space-y-4">
           <div className="flex items-center justify-between px-2">
-            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">
-              {searchQuery ? 'Search Results' : 'Suggested People'}
-            </h4>
+            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">Discover People</h4>
+            <button className="text-[10px] font-black uppercase tracking-widest text-emerald-500">See All</button>
           </div>
-          
           <div className="grid grid-cols-1 gap-4">
-            <AnimatePresence mode="popLayout">
-              {results.length > 0 ? (
-                results.map((user) => (
-                  <motion.div
-                    key={user.uid}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    layout
-                  >
-                    <GlassCard 
-                      onClick={() => setSelectedUser(user)}
-                      className="p-4 border-white/5 flex items-center justify-between hover:bg-white/[0.05] transition-all cursor-pointer group"
-                    >
-                      <div className="flex items-center gap-4">
-                        <StaticAvatar 
-                          src={user.photoURL} 
-                          alt={user.displayName || 'User'} 
-                          className="w-12 h-12 rounded-2xl border border-white/10"
-                        />
-                        <div>
-                          <h3 className="font-black text-sm tracking-tight">{user.displayName || 'Anonymous User'}</h3>
-                          <p className="text-[10px] text-emerald-500 font-black uppercase tracking-widest">@{user.username}</p>
-                        </div>
-                      </div>
-                      <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 group-hover:bg-emerald-500 group-hover:text-black transition-all">
-                        <UserPlus className="w-4 h-4" />
-                      </div>
-                    </GlassCard>
-                  </motion.div>
-                ))
-              ) : searchQuery.length >= 2 && !loading ? (
-                <div className="text-center py-12 opacity-20">
-                  <Users className="w-12 h-12 mx-auto mb-4" />
-                  <p className="text-sm font-black uppercase tracking-widest">No users found</p>
+            {[1, 2, 3].map((i) => (
+              <GlassCard key={i} className="p-4 border-white/5 flex items-center justify-between hover:bg-white/[0.05] transition-all cursor-pointer">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center">
+                    <User className="w-6 h-6 text-white/20" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-sm tracking-tight">@user_{i}</h3>
+                    <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest">Class 12 • PCM</p>
+                  </div>
                 </div>
-              ) : !searchQuery && (
-                <div className="text-center py-12 opacity-20">
-                  <SearchIcon className="w-12 h-12 mx-auto mb-4" />
-                  <p className="text-sm font-black uppercase tracking-widest">Start typing to search</p>
+                <button className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500 hover:text-black transition-all">
+                  <UserPlus className="w-4 h-4" />
+                </button>
+              </GlassCard>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex items-center justify-between px-2">
+            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">Suggested People</h4>
+            <button className="text-[10px] font-black uppercase tracking-widest text-emerald-500">Refresh</button>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            {[4, 5, 6, 7].map((i) => (
+              <GlassCard key={i} className="p-6 border-white/5 flex flex-col items-center text-center space-y-4 hover:bg-white/[0.05] transition-all cursor-pointer">
+                <div className="w-16 h-16 rounded-3xl bg-white/5 border border-white/5 flex items-center justify-center">
+                  <User className="w-8 h-8 text-white/20" />
                 </div>
-              )}
-            </AnimatePresence>
+                <div>
+                  <h3 className="font-black text-sm tracking-tight">@user_{i}</h3>
+                  <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest mt-1">BITSAT • JEE</p>
+                </div>
+                <button className="w-full py-2 bg-white/5 rounded-xl border border-white/5 text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500 hover:text-black hover:border-emerald-500 transition-all">
+                  Follow
+                </button>
+              </GlassCard>
+            ))}
           </div>
         </div>
       </div>
-
-      <AnimatePresence>
-        {selectedUser && (
-          <UserProfilePreview 
-            user={selectedUser} 
-            currentUser={currentUser}
-            onClose={() => setSelectedUser(null)}
-          />
-        )}
-      </AnimatePresence>
     </div>
   );
 };
