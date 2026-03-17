@@ -3,8 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { GlassCard } from './GlassCard';
 import { Button } from './Button';
 import { ClassLevel, OnboardingData, Stream } from '../types';
-import { CLASS_10_LANGUAGES, STREAMS, ELECTIVES, COMPETITIVE_EXAMS } from '../data/syllabus';
-import { ChevronRight, ChevronLeft, CheckCircle2 } from 'lucide-react';
+import { CLASS_10_LANGUAGES, STREAMS, ELECTIVES, COMPETITIVE_EXAMS, CUET_DOMAINS, CUET_LANGUAGES, CUET_GENERAL } from '../data/syllabus';
+import { ChevronRight, ChevronLeft, CheckCircle2, AlertCircle } from 'lucide-react';
 
 interface OnboardingProps {
   onComplete: (data: OnboardingData) => void;
@@ -18,6 +18,7 @@ const initialData: OnboardingData = {
   secondLanguage: null,
   preparingForCompetitive: false,
   competitiveExams: [],
+  cuetSubjects: [],
 };
 
 export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
@@ -33,10 +34,11 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   };
 
   const handleStreamSelect = (stream: Stream) => {
+    const streamSubjects = STREAMS[stream as keyof typeof STREAMS] || [];
     setData({ 
       ...data, 
       stream, 
-      subjects: STREAMS[stream as keyof typeof STREAMS] || [] 
+      subjects: streamSubjects
     });
     nextStep();
   };
@@ -53,6 +55,15 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       ? data.competitiveExams.filter(e => e !== exam)
       : [...data.competitiveExams, exam];
     setData({ ...data, competitiveExams: exams });
+  };
+
+  const toggleCuetSubject = (subject: string) => {
+    const subjects = data.cuetSubjects.includes(subject)
+      ? data.cuetSubjects.filter(s => s !== subject)
+      : data.cuetSubjects.length < 5 
+        ? [...data.cuetSubjects, subject]
+        : data.cuetSubjects;
+    setData({ ...data, cuetSubjects: subjects });
   };
 
   const renderStep = () => {
@@ -116,8 +127,8 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                 <Button 
                   variant="primary" 
                   onClick={() => {
-                    setData({ ...data, subjects: ['Maths', 'Science', 'Social Science', 'English'] });
-                    onComplete({ ...data, subjects: ['Maths', 'Science', 'Social Science', 'English'] });
+                    const subjects = ['Maths', 'Science', 'Social Science', 'English'];
+                    onComplete({ ...data, subjects });
                   }} 
                   className="flex-1"
                   disabled={!data.secondLanguage}
@@ -189,11 +200,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
               <Button 
                 variant="primary" 
                 onClick={() => {
-                  if (['PCM', 'PCB'].includes(data.stream || '')) {
-                    nextStep();
-                  } else {
-                    onComplete(data);
-                  }
+                  nextStep();
                 }} 
                 className="flex-1"
               >
@@ -237,7 +244,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
               <motion.div 
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
-                className="grid grid-cols-1 gap-3 pt-4"
+                className="grid grid-cols-1 gap-3 pt-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar"
               >
                 {COMPETITIVE_EXAMS.map((exam) => (
                   <Button 
@@ -257,8 +264,101 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
               <Button variant="ghost" onClick={prevStep} className="flex-1">Back</Button>
               <Button 
                 variant="primary" 
+                onClick={() => {
+                  if (data.competitiveExams.includes('CUET')) {
+                    nextStep();
+                  } else {
+                    onComplete(data);
+                  }
+                }} 
+                className="flex-1"
+              >
+                {data.competitiveExams.includes('CUET') ? 'Next' : 'Finish'}
+              </Button>
+            </div>
+          </motion.div>
+        );
+
+      case 5:
+        return (
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-6"
+          >
+            <div className="space-y-2">
+              <h2 className="text-2xl font-semibold">CUET Subjects</h2>
+              <p className="text-white/60">Select up to 5 subjects for CUET.</p>
+              <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold">
+                <AlertCircle className="w-3 h-3" />
+                <span>{data.cuetSubjects.length} / 5 selected</span>
+              </div>
+            </div>
+
+            <div className="space-y-6 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+              <section className="space-y-3">
+                <h3 className="text-xs font-black uppercase tracking-widest text-white/40">Domain Subjects</h3>
+                <div className="grid grid-cols-1 gap-2">
+                  {CUET_DOMAINS.map(sub => (
+                    <Button 
+                      key={sub}
+                      variant={data.cuetSubjects.includes(sub) ? 'primary' : 'secondary'}
+                      className="w-full justify-between py-2 text-sm"
+                      onClick={() => toggleCuetSubject(sub)}
+                      disabled={!data.cuetSubjects.includes(sub) && data.cuetSubjects.length >= 5}
+                    >
+                      <span>{sub}</span>
+                      {data.cuetSubjects.includes(sub) && <CheckCircle2 className="w-3 h-3" />}
+                    </Button>
+                  ))}
+                </div>
+              </section>
+
+              <section className="space-y-3">
+                <h3 className="text-xs font-black uppercase tracking-widest text-white/40">Language</h3>
+                <div className="grid grid-cols-1 gap-2">
+                  {CUET_LANGUAGES.map(sub => (
+                    <Button 
+                      key={sub}
+                      variant={data.cuetSubjects.includes(sub) ? 'primary' : 'secondary'}
+                      className="w-full justify-between py-2 text-sm"
+                      onClick={() => toggleCuetSubject(sub)}
+                      disabled={!data.cuetSubjects.includes(sub) && data.cuetSubjects.length >= 5}
+                    >
+                      <span>{sub}</span>
+                      {data.cuetSubjects.includes(sub) && <CheckCircle2 className="w-3 h-3" />}
+                    </Button>
+                  ))}
+                </div>
+              </section>
+
+              <section className="space-y-3">
+                <h3 className="text-xs font-black uppercase tracking-widest text-white/40">General Test</h3>
+                <div className="grid grid-cols-1 gap-2">
+                  {CUET_GENERAL.map(sub => (
+                    <Button 
+                      key={sub}
+                      variant={data.cuetSubjects.includes(sub) ? 'primary' : 'secondary'}
+                      className="w-full justify-between py-2 text-sm"
+                      onClick={() => toggleCuetSubject(sub)}
+                      disabled={!data.cuetSubjects.includes(sub) && data.cuetSubjects.length >= 5}
+                    >
+                      <span>{sub}</span>
+                      {data.cuetSubjects.includes(sub) && <CheckCircle2 className="w-3 h-3" />}
+                    </Button>
+                  ))}
+                </div>
+              </section>
+            </div>
+
+            <div className="flex gap-4 pt-4">
+              <Button variant="ghost" onClick={prevStep} className="flex-1">Back</Button>
+              <Button 
+                variant="primary" 
                 onClick={() => onComplete(data)} 
                 className="flex-1"
+                disabled={data.cuetSubjects.length === 0}
               >
                 Finish
               </Button>
@@ -272,8 +372,12 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-black via-[#0a0a0a] to-[#050505]">
-      <GlassCard className="w-full max-w-md p-8">
+    <div className="min-h-screen flex items-center justify-center p-6 bg-[#050505] relative overflow-hidden">
+      {/* Background Gradients */}
+      <div className="fixed top-0 right-0 w-[600px] h-[600px] bg-emerald-500/5 blur-[120px] rounded-full -z-10" />
+      <div className="fixed bottom-0 left-0 w-[400px] h-[400px] bg-blue-500/5 blur-[100px] rounded-full -z-10" />
+
+      <GlassCard className="w-full max-w-lg p-10 md:p-12 border-white/5 shadow-2xl">
         <AnimatePresence mode="wait">
           {renderStep()}
         </AnimatePresence>

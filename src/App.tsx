@@ -3,14 +3,19 @@ import { Onboarding } from './components/Onboarding';
 import { Dashboard } from './components/Dashboard';
 import { AppState, OnboardingData, Subject } from './types';
 import { getInitialSyllabus } from './data/syllabus';
+import { getOrCreateUserId, saveOnboardingData, updateChapterProgress } from './services/firebaseService';
 
 const STORAGE_KEY = 'circles_app_state';
 
 export default function App() {
   const [state, setState] = useState<AppState | null>(null);
   const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<string>('');
 
   useEffect(() => {
+    const id = getOrCreateUserId();
+    setUserId(id);
+
     const savedState = localStorage.getItem(STORAGE_KEY);
     if (savedState) {
       try {
@@ -28,49 +33,67 @@ export default function App() {
     }
   }, [state]);
 
-  const handleOnboardingComplete = (data: OnboardingData) => {
+  const handleOnboardingComplete = async (data: OnboardingData) => {
     const initialSyllabus = getInitialSyllabus(
       data.classLevel!,
       data.stream,
       data.subjects,
       data.electives,
       data.secondLanguage,
-      data.competitiveExams
+      data.competitiveExams,
+      data.cuetSubjects
     );
 
-    setState({
+    const newState = {
       onboardingComplete: true,
       onboardingData: data,
       syllabus: initialSyllabus,
-    });
+    };
+
+    setState(newState);
+    
+    // Silent Firebase sync
+    await saveOnboardingData(userId, data);
   };
 
-  const handleUpdateSyllabus = (subjectId: string, chapterId: string) => {
+  const handleUpdateSyllabus = async (subjectId: string, chapterId: string) => {
     if (!state) return;
 
-    const newSyllabus = state.syllabus.map(subject => {
+    let updatedSubject: Subject | null = null;
+
+    const newSyllabus = [...state.syllabus].map(subject => {
       if (subject.id === subjectId) {
-        return {
-          ...subject,
-          chapters: subject.chapters.map(chapter => {
-            if (chapter.id === chapterId) {
-              return { ...chapter, completed: !chapter.completed };
-            }
-            return chapter;
-          })
-        };
+        const newChapters = subject.chapters.map(chapter => {
+          if (chapter.id === chapterId) {
+            return { ...chapter, completed: !chapter.completed };
+          }
+          return chapter;
+        });
+        
+        updatedSubject = { ...subject, chapters: newChapters };
+        return updatedSubject;
       }
       return subject;
     });
 
     setState({ ...state, syllabus: newSyllabus });
+
+    // Silent Firebase sync for progress
+    if (updatedSubject) {
+      const sub = updatedSubject as Subject;
+      const completedIds = sub.chapters.filter(ch => ch.completed).map(ch => ch.id);
+      await updateChapterProgress(
+        userId, 
+        sub.parentExam || 'CBSE', 
+        sub.name, 
+        completedIds
+      );
+    }
   };
 
   const handleLogout = () => {
-    if (window.confirm('Are you sure you want to reset all data? This will clear your progress.')) {
-      localStorage.removeItem(STORAGE_KEY);
-      setState(null);
-    }
+    localStorage.removeItem(STORAGE_KEY);
+    setState(null);
   };
 
   if (loading) {

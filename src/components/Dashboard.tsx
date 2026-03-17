@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Timer } from './Timer';
 import { SyllabusTracker } from './SyllabusTracker';
-import { AppState, OnboardingData, Subject } from '../types';
-import { LayoutDashboard, Timer as TimerIcon, BookOpen, Settings, LogOut, User, Bell } from 'lucide-react';
-import { GlassCard } from './GlassCard';
+import { ExamCountdown } from './ExamCountdown';
+import { AppState } from '../types';
+import { Timer as TimerIcon, BookOpen, LogOut, Settings } from 'lucide-react';
 
 interface DashboardProps {
   state: AppState;
@@ -16,99 +16,76 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onUpdateSyllabus, o
   const [activeTab, setActiveTab] = useState<'timer' | 'syllabus'>('timer');
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white flex flex-col md:flex-row">
-      {/* Sidebar */}
-      <aside className="w-full md:w-64 glass border-r border-white/5 p-6 flex flex-col gap-8 z-20">
-        <div className="flex items-center gap-3 px-2">
-          <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-            <span className="font-bold text-xl">C</span>
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight">Circles</h1>
-        </div>
+    <div className="min-h-screen bg-[#050505] text-white flex flex-col">
+      {/* Background Gradients */}
+      <div className="fixed top-0 right-0 w-[600px] h-[600px] bg-emerald-500/5 blur-[120px] rounded-full -z-10 animate-pulse" />
+      <div className="fixed bottom-0 left-0 w-[400px] h-[400px] bg-blue-500/5 blur-[100px] rounded-full -z-10" />
 
-        <nav className="flex-1 space-y-2">
-          <button 
-            onClick={() => setActiveTab('timer')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-              activeTab === 'timer' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-white/40 hover:bg-white/5 hover:text-white/60'
-            }`}
-          >
-            <TimerIcon className="w-5 h-5" />
-            <span className="font-medium">Timer</span>
-          </button>
-          <button 
-            onClick={() => setActiveTab('syllabus')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-              activeTab === 'syllabus' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-white/40 hover:bg-white/5 hover:text-white/60'
-            }`}
-          >
-            <BookOpen className="w-5 h-5" />
-            <span className="font-medium">Syllabus</span>
-          </button>
-          <button 
-            disabled
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-white/20 cursor-not-allowed"
-          >
-            <LayoutDashboard className="w-5 h-5" />
-            <span className="font-medium">Stats (Soon)</span>
-          </button>
-        </nav>
-
-        <div className="space-y-4 pt-6 border-t border-white/5">
-          <div className="flex items-center gap-3 px-4 py-2 opacity-50 cursor-not-allowed group">
-            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-              <User className="w-4 h-4" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-medium">Guest User</span>
-              <span className="text-[10px] text-white/40">Login Disabled</span>
-            </div>
-          </div>
-          <button 
-            onClick={onLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-400/60 hover:bg-red-500/10 hover:text-red-400 transition-all"
-          >
-            <LogOut className="w-5 h-5" />
-            <span className="font-medium">Reset Data</span>
-          </button>
+      {/* Minimal Logo */}
+      <div className="fixed top-8 left-8 flex items-center gap-3 opacity-40 hover:opacity-100 transition-opacity">
+        <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center">
+          <span className="font-black text-sm text-black">C</span>
         </div>
-      </aside>
+        <span className="font-black tracking-tighter text-xl">Circles</span>
+      </div>
+
+      {/* Top Right Actions */}
+      <div className="fixed top-8 right-8 flex items-center gap-4 z-50">
+        <button 
+          onClick={onLogout}
+          className="glass p-2.5 rounded-xl text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-all border-white/5"
+          title="Reset Data"
+        >
+          <LogOut className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Minimal Navigation */}
+      <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 glass px-4 py-2 flex items-center gap-2 z-50 border-white/10 shadow-2xl">
+        <button 
+          onClick={() => setActiveTab('timer')}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl transition-all font-bold text-sm ${
+            activeTab === 'timer' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-white/40 hover:text-white/60'
+          }`}
+        >
+          <TimerIcon className="w-4 h-4" />
+          <span>Timer</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab('syllabus')}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl transition-all font-bold text-sm ${
+            activeTab === 'syllabus' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-white/40 hover:text-white/60'
+          }`}
+        >
+          <BookOpen className="w-4 h-4" />
+          <span>Syllabus</span>
+        </button>
+      </nav>
 
       {/* Main Content */}
-      <main className="flex-1 p-6 md:p-12 overflow-y-auto relative">
-        {/* Background Gradients */}
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-500/10 blur-[120px] rounded-full -z-10" />
-        <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-blue-500/5 blur-[100px] rounded-full -z-10" />
-
-        <header className="flex items-center justify-between mb-12">
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight">
-              {activeTab === 'timer' ? 'Focus Session' : 'My Syllabus'}
-            </h2>
-            <p className="text-white/40 text-sm mt-1">
-              Class {state.onboardingData.classLevel} • {state.onboardingData.stream || 'General'}
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            <button className="p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all text-white/60">
-              <Bell className="w-5 h-5" />
-            </button>
-            <button className="p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all text-white/60">
-              <Settings className="w-5 h-5" />
-            </button>
-          </div>
-        </header>
-
+      <main className="flex-1 flex flex-col items-center pt-24 pb-32 px-6 overflow-y-auto custom-scrollbar">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="flex flex-col items-center"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.02 }}
+            className="w-full max-w-2xl flex flex-col items-center space-y-12"
           >
             {activeTab === 'timer' ? (
-              <Timer />
+              <>
+                <Timer />
+                {state.onboardingData.preparingForCompetitive && (
+                  <div className="w-full space-y-6">
+                    <div className="flex items-center gap-3 px-2">
+                      <div className="h-px flex-1 bg-white/10" />
+                      <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Exam Countdowns</span>
+                      <div className="h-px flex-1 bg-white/10" />
+                    </div>
+                    <ExamCountdown exams={state.onboardingData.competitiveExams} />
+                  </div>
+                )}
+              </>
             ) : (
               <SyllabusTracker 
                 syllabus={state.syllabus} 

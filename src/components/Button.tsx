@@ -21,10 +21,10 @@ export const Button: React.FC<ButtonProps> = ({
   ...props 
 }) => {
   const variants = {
-    primary: 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-500/20',
-    secondary: 'bg-white/10 text-white hover:bg-white/20 border border-white/10',
+    primary: 'bg-emerald-500 text-white hover:bg-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.2)] hover:shadow-[0_0_30px_rgba(16,185,129,0.4)]',
+    secondary: 'bg-white/[0.03] text-white hover:bg-white/[0.08] border border-white/5 hover:border-white/20',
     ghost: 'bg-transparent text-white hover:bg-white/5',
-    outline: 'bg-transparent border border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10'
+    outline: 'bg-transparent border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/60'
   };
 
   const sizes = {
