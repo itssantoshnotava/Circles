@@ -30,10 +30,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onUpdateSyllabus, o
 
   useEffect(() => {
     console.log("Dashboard loaded");
-    console.log("Timer active");
     
     // Refresh profile data periodically or on mount
     setUserProfile(getCurrentUserProfile());
+    console.log("Profile loaded");
   }, [activeTab]);
 
   const handleEnterRoom = (roomId: string) => {
@@ -68,12 +68,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onUpdateSyllabus, o
 
       {/* Top Right Actions */}
       <div className="fixed top-8 right-8 flex items-center gap-4 z-50">
-        <StaticAvatar 
-          src={userProfile.photoURL}
-          alt={userProfile.displayName || 'User'}
-          className="w-10 h-10 rounded-full border-2 border-white/10 shadow-lg shadow-emerald-500/10 hover:border-emerald-500/50 hover:scale-110 transition-all active:scale-95"
-          onClick={() => setActiveTab('profile')}
-        />
         <button 
           onClick={onLogout}
           className="glass p-2.5 rounded-xl text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-all border-white/5"
@@ -85,6 +79,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onUpdateSyllabus, o
 
       {/* Minimal Navigation - Icon Only */}
       <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 glass px-6 py-3 flex items-center gap-6 z-50 border-white/10 shadow-2xl rounded-3xl">
+        <button 
+          onClick={() => {
+            setActiveTab('dashboard');
+            setCurrentRoomId(null);
+          }}
+          className={`relative p-2 transition-all hover:scale-110 active:scale-95 ${
+            activeTab === 'dashboard' ? 'text-emerald-500' : 'text-white/30 hover:text-white/60'
+          }`}
+          title="Dashboard"
+        >
+          <TimerIcon className="w-7 h-7" />
+          {activeTab === 'dashboard' && (
+            <motion.div layoutId="nav-glow" className="absolute inset-0 bg-emerald-500/20 blur-xl rounded-full -z-10" />
+          )}
+        </button>
+
         <button 
           onClick={() => {
             setActiveTab('discover');

@@ -5,7 +5,7 @@ import { Button } from './Button';
 import { Play, Pause, RotateCcw, Timer as TimerIcon, Clock, Hourglass } from 'lucide-react';
 import { getOrCreateUserId, saveTimerMode } from '../services/firebaseService';
 
-type TimerMode = 'pomodoro' | 'shortBreak' | 'longBreak' | 'stopwatch' | 'countdown';
+type TimerMode = 'pomodoro' | 'stopwatch' | 'countdown';
 
 interface TimerProps {
   isRoomMode?: boolean;
@@ -16,8 +16,6 @@ interface TimerProps {
 
 const MODE_TIMES: Record<string, number> = {
   pomodoro: 25 * 60,
-  shortBreak: 5 * 60,
-  longBreak: 15 * 60,
   stopwatch: 0,
   countdown: 25 * 60
 };
@@ -51,12 +49,7 @@ export const Timer: React.FC<TimerProps> = ({
           
           if (mode !== 'stopwatch' && newTime === 0) {
             setIsActive(false);
-            // Auto-transition logic
-            if (mode === 'pomodoro') {
-              handleModeChange('shortBreak');
-            } else if (mode === 'shortBreak' || mode === 'longBreak') {
-              handleModeChange('pomodoro');
-            }
+            console.log("Timer finished");
           }
 
           // Sync to room if host
@@ -111,6 +104,7 @@ export const Timer: React.FC<TimerProps> = ({
 
   const handleModeChange = (newMode: TimerMode) => {
     if (isRoomMode && !isHost) return;
+    console.log(`Switching timer mode to: ${newMode}`);
     // 1. Stop current timer
     setIsActive(false);
     if (timerRef.current) clearInterval(timerRef.current);
@@ -150,7 +144,7 @@ export const Timer: React.FC<TimerProps> = ({
       <div className="absolute -top-20 -left-20 w-64 h-64 bg-emerald-500/5 blur-[100px] rounded-full group-hover:bg-emerald-500/10 transition-all duration-700" />
       
       <div className="flex bg-white/5 p-1.5 rounded-2xl w-full overflow-x-auto no-scrollbar">
-        {(['pomodoro', 'shortBreak', 'longBreak', 'stopwatch', 'countdown'] as TimerMode[]).map((m) => (
+        {(['pomodoro', 'stopwatch', 'countdown'] as TimerMode[]).map((m) => (
           <button
             key={m}
             onClick={() => handleModeChange(m)}
@@ -161,11 +155,9 @@ export const Timer: React.FC<TimerProps> = ({
             }`}
           >
             {m === 'pomodoro' && <TimerIcon className="w-3 h-3" />}
-            {m === 'shortBreak' && <RotateCcw className="w-3 h-3" />}
-            {m === 'longBreak' && <RotateCcw className="w-3 h-3" />}
             {m === 'stopwatch' && <Clock className="w-3 h-3" />}
             {m === 'countdown' && <Hourglass className="w-3 h-3" />}
-            <span>{m.replace(/([A-Z])/g, ' $1')}</span>
+            <span>{m}</span>
           </button>
         ))}
       </div>
