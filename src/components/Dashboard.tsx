@@ -12,7 +12,7 @@ import { Chat, Notifications } from './Placeholders';
 import { StaticAvatar } from './StaticAvatar';
 import { AppState } from '../types';
 import { Timer as TimerIcon, BookOpen, LogOut, Home, Search as SearchIcon, MessageSquare, Bell, User, Users } from 'lucide-react';
-import { getCurrentUserProfile } from '../services/firebaseService';
+import { getCurrentUserProfile, listenToNotifications } from '../services/firebaseService';
 
 interface DashboardProps {
   state: AppState;
@@ -35,6 +35,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onUpdateSyllabus, o
     setUserProfile(getCurrentUserProfile());
     console.log("Profile loaded");
   }, [activeTab]);
+
+  useEffect(() => {
+    if (!userProfile.uid) return;
+
+    const unsubscribe = listenToNotifications(userProfile.uid, (notifs) => {
+      const unread = notifs.some(n => !n.read);
+      if (unread) setHasNewNotifications(true);
+    });
+
+    return () => unsubscribe();
+  }, [userProfile.uid]);
 
   const handleEnterRoom = (roomId: string) => {
     setCurrentRoomId(roomId);
@@ -244,7 +255,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onUpdateSyllabus, o
             )}
 
             {activeTab === 'discover' && <Discover />}
-            {activeTab === 'search' && <Search />}
+            {activeTab === 'search' && <Search currentUser={userProfile} />}
             {activeTab === 'rooms' && (
               currentRoomId ? (
                 <RoomScreen 
@@ -264,6 +275,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onUpdateSyllabus, o
               <Profile 
                 onboardingData={state.onboardingData} 
                 onLogout={onLogout}
+                user={userProfile}
               />
             )}
           </motion.div>
