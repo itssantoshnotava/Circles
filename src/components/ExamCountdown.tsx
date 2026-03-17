@@ -48,7 +48,7 @@ export const ExamCountdown: React.FC<CountdownProps> = ({ exams }) => {
   if (!exams || exams.length === 0) return null;
 
   return (
-    <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="w-full flex flex-col gap-4">
       {exams.map((examName) => {
         const exam = EXAM_DATES[examName];
         if (!exam) return null;

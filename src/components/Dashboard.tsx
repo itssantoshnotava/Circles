@@ -14,7 +14,13 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ state, onUpdateSyllabus, onLogout }) => {
-  const [activeTab, setActiveTab] = useState<'timer' | 'syllabus' | 'profile'>('timer');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'profile'>('dashboard');
+
+  React.useEffect(() => {
+    console.log("Dashboard loaded");
+    console.log("Timer active");
+    console.log("Syllabus loaded");
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#050505] text-white flex flex-col">
@@ -44,22 +50,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onUpdateSyllabus, o
       {/* Minimal Navigation */}
       <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 glass px-4 py-2 flex items-center gap-2 z-50 border-white/10 shadow-2xl">
         <button 
-          onClick={() => setActiveTab('timer')}
+          onClick={() => setActiveTab('dashboard')}
           className={`flex items-center gap-2 px-6 py-2.5 rounded-xl transition-all font-bold text-sm ${
-            activeTab === 'timer' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-white/40 hover:text-white/60'
+            activeTab === 'dashboard' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-white/40 hover:text-white/60'
           }`}
         >
           <TimerIcon className="w-4 h-4" />
-          <span>Timer</span>
-        </button>
-        <button 
-          onClick={() => setActiveTab('syllabus')}
-          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl transition-all font-bold text-sm ${
-            activeTab === 'syllabus' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-white/40 hover:text-white/60'
-          }`}
-        >
-          <BookOpen className="w-4 h-4" />
-          <span>Syllabus</span>
+          <span>Dashboard</span>
         </button>
         <button 
           onClick={() => setActiveTab('profile')}
@@ -80,29 +77,40 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onUpdateSyllabus, o
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 1.02 }}
-            className="w-full max-w-2xl flex flex-col items-center space-y-12"
+            className="w-full max-w-7xl flex flex-col items-center space-y-12"
           >
-            {activeTab === 'timer' && (
-              <>
-                <Timer />
-                {state.onboardingData.preparingForCompetitive && (
-                  <div className="w-full space-y-6">
-                    <div className="flex items-center gap-3 px-2">
-                      <div className="h-px flex-1 bg-white/10" />
-                      <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Exam Countdowns</span>
-                      <div className="h-px flex-1 bg-white/10" />
-                    </div>
-                    <ExamCountdown exams={state.onboardingData.competitiveExams} />
+            {activeTab === 'dashboard' && (
+              <div className="w-full space-y-12">
+                {/* Top Section: Timer */}
+                <div className="flex flex-col items-center">
+                  <Timer />
+                </div>
+
+                {/* Bottom Section: Split Columns */}
+                <div className="grid grid-cols-1 lg:grid-cols-10 gap-8 items-start">
+                  {/* Left Column: Exam Countdown (30%) */}
+                  <div className="lg:col-span-3 space-y-6">
+                    {state.onboardingData.preparingForCompetitive && (
+                      <>
+                        <div className="flex items-center gap-3 px-2">
+                          <div className="h-px flex-1 bg-white/10" />
+                          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Exams</span>
+                          <div className="h-px flex-1 bg-white/10" />
+                        </div>
+                        <ExamCountdown exams={state.onboardingData.competitiveExams} />
+                      </>
+                    )}
                   </div>
-                )}
-              </>
-            )}
-            
-            {activeTab === 'syllabus' && (
-              <SyllabusTracker 
-                syllabus={state.syllabus} 
-                onToggleChapter={onUpdateSyllabus} 
-              />
+
+                  {/* Right Column: Syllabus Tracker (70%) */}
+                  <div className="lg:col-span-7">
+                    <SyllabusTracker 
+                      syllabus={state.syllabus} 
+                      onToggleChapter={onUpdateSyllabus} 
+                    />
+                  </div>
+                </div>
+              </div>
             )}
 
             {activeTab === 'profile' && (
