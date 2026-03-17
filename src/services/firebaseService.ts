@@ -67,6 +67,10 @@ export const signInWithGoogle = async () => {
     const user = result.user;
     setAuthUser(user.uid);
     setGuestMode(false);
+    
+    // Check if profile exists and sync
+    await checkUserProfileExists(user.uid);
+    
     return user;
   } catch (error) {
     console.error("Error signing in with Google:", error);
@@ -80,9 +84,9 @@ export const getCurrentUserProfile = () => {
   
   console.log("User data fetched");
   
-  return {
+  const profile = {
     uid: user?.uid || 'guest',
-    displayName: user?.displayName || (isGuest ? 'Guest User' : null),
+    displayName: localStorage.getItem('circles_display_name') || user?.displayName || (isGuest ? 'Guest User' : null),
     username: localStorage.getItem('circles_username') || null,
     email: user?.email || (isGuest ? 'guest@circles.app' : null),
     photoURL: localStorage.getItem('circles_profile_pic') || user?.photoURL || null,
@@ -90,6 +94,36 @@ export const getCurrentUserProfile = () => {
     isGuest,
     profileSetupComplete: localStorage.getItem('circles_profile_setup_complete') === 'true'
   };
+
+  return profile;
+};
+
+export const checkUserProfileExists = async (userId: string): Promise<boolean> => {
+  console.log("Checking user profile in Firestore");
+  try {
+    const userRef = doc(db, "users", userId);
+    const userDoc = await getDoc(userRef);
+    
+    if (userDoc.exists()) {
+      const data = userDoc.data();
+      console.log("User exists → skipping setup");
+      
+      // Sync to localStorage
+      if (data.username) localStorage.setItem('circles_username', data.username);
+      if (data.dob) localStorage.setItem('circles_dob', data.dob);
+      if (data.photoURL) localStorage.setItem('circles_profile_pic', data.photoURL);
+      if (data.displayName) localStorage.setItem('circles_display_name', data.displayName);
+      if (data.profileSetupComplete) localStorage.setItem('circles_profile_setup_complete', 'true');
+      
+      return true;
+    }
+    
+    console.log("New user → going to setup");
+    return false;
+  } catch (error) {
+    console.error("Error checking user profile:", error);
+    return false;
+  }
 };
 
 export const checkUsernameUnique = async (username: string): Promise<boolean> => {
@@ -115,6 +149,7 @@ export const saveUserProfile = async (userId: string, profileData: { name: strin
     
     await setDoc(userRef, data, { merge: true });
     
+    localStorage.setItem('circles_display_name', data.displayName);
     localStorage.setItem('circles_username', data.username);
     localStorage.setItem('circles_dob', data.dob);
     localStorage.setItem('circles_profile_pic', data.photoURL);

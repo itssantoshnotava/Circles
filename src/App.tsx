@@ -13,7 +13,8 @@ import {
   getAuthUser, 
   seedAccessCodes,
   logoutUser,
-  getCurrentUserProfile
+  getCurrentUserProfile,
+  checkUserProfileExists
 } from './services/firebaseService';
 
 const STORAGE_KEY = 'circles_app_state';
@@ -37,6 +38,8 @@ export default function App() {
       setIsAuthenticated(!!authUser);
       
       if (authUser) {
+        // Check if profile exists in Firestore to prevent repeat setup
+        await checkUserProfileExists(authUser);
         const profile = getCurrentUserProfile();
         setUserProfile(profile);
       }
@@ -62,8 +65,12 @@ export default function App() {
     }
   }, [state]);
 
-  const handleAccessGranted = () => {
+  const handleAccessGranted = async () => {
     setIsAuthenticated(true);
+    const authUser = getAuthUser();
+    if (authUser) {
+      await checkUserProfileExists(authUser);
+    }
     const profile = getCurrentUserProfile();
     setUserProfile(profile);
   };
