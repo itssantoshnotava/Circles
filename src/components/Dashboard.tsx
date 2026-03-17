@@ -4,9 +4,12 @@ import { Timer } from './Timer';
 import { SyllabusTracker } from './SyllabusTracker';
 import { ExamCountdown } from './ExamCountdown';
 import { Profile } from './Profile';
+import { Discover } from './Discover';
+import { Search } from './Search';
+import { Chat, Notifications } from './Placeholders';
 import { StaticAvatar } from './StaticAvatar';
 import { AppState } from '../types';
-import { Timer as TimerIcon, BookOpen, LogOut, LayoutDashboard } from 'lucide-react';
+import { Timer as TimerIcon, BookOpen, LogOut, Home, Search as SearchIcon, MessageSquare, Bell, User } from 'lucide-react';
 import { getCurrentUserProfile } from '../services/firebaseService';
 
 interface DashboardProps {
@@ -15,32 +18,20 @@ interface DashboardProps {
   onLogout: () => void;
 }
 
+type Tab = 'dashboard' | 'discover' | 'search' | 'chat' | 'notifications' | 'profile';
+
 export const Dashboard: React.FC<DashboardProps> = ({ state, onUpdateSyllabus, onLogout }) => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'profile'>('dashboard');
+  const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [userProfile, setUserProfile] = useState(getCurrentUserProfile());
+  const [hasNewNotifications, setHasNewNotifications] = useState(true);
 
   useEffect(() => {
     console.log("Dashboard loaded");
     console.log("Timer active");
-    console.log("Syllabus loaded");
     
     // Refresh profile data periodically or on mount
     setUserProfile(getCurrentUserProfile());
   }, [activeTab]);
-
-  const scrollToSection = (id: string) => {
-    if (activeTab !== 'dashboard') {
-      setActiveTab('dashboard');
-      // Wait for transition
-      setTimeout(() => {
-        const el = document.getElementById(id);
-        el?.scrollIntoView({ behavior: 'smooth' });
-      }, 100);
-    } else {
-      const el = document.getElementById(id);
-      el?.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
 
   return (
     <div className="min-h-screen bg-[#050505] text-white flex flex-col">
@@ -48,13 +39,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onUpdateSyllabus, o
       <div className="fixed top-0 right-0 w-[600px] h-[600px] bg-emerald-500/5 blur-[120px] rounded-full -z-10 animate-pulse" />
       <div className="fixed bottom-0 left-0 w-[400px] h-[400px] bg-blue-500/5 blur-[100px] rounded-full -z-10" />
 
-      {/* Minimal Logo */}
-      <div className="fixed top-8 left-8 flex items-center gap-3 opacity-40 hover:opacity-100 transition-opacity z-50">
-        <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center">
+      {/* Minimal Logo - Clickable to go back to Dashboard */}
+      <button 
+        onClick={() => setActiveTab('dashboard')}
+        className="fixed top-8 left-8 flex items-center gap-3 opacity-40 hover:opacity-100 transition-opacity z-50 group"
+      >
+        <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center group-hover:scale-110 transition-transform">
           <span className="font-black text-sm text-black">C</span>
         </div>
         <span className="font-black tracking-tighter text-xl hidden sm:block">Circles</span>
-      </div>
+      </button>
 
       {/* Top Right Actions */}
       <div className="fixed top-8 right-8 flex items-center gap-4 z-50">
@@ -73,28 +67,81 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onUpdateSyllabus, o
         </button>
       </div>
 
-      {/* Minimal Navigation */}
-      <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 glass px-4 py-2 flex items-center gap-2 z-50 border-white/10 shadow-2xl">
+      {/* Minimal Navigation - Icon Only */}
+      <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 glass px-6 py-3 flex items-center gap-8 z-50 border-white/10 shadow-2xl rounded-3xl">
+        <button 
+          onClick={() => setActiveTab('discover')}
+          className={`relative p-2 transition-all hover:scale-110 active:scale-95 ${
+            activeTab === 'discover' ? 'text-emerald-500' : 'text-white/30 hover:text-white/60'
+          }`}
+          title="Discover"
+        >
+          <Home className="w-7 h-7" />
+          {activeTab === 'discover' && (
+            <motion.div layoutId="nav-glow" className="absolute inset-0 bg-emerald-500/20 blur-xl rounded-full -z-10" />
+          )}
+        </button>
+
+        <button 
+          onClick={() => setActiveTab('search')}
+          className={`relative p-2 transition-all hover:scale-110 active:scale-95 ${
+            activeTab === 'search' ? 'text-emerald-500' : 'text-white/30 hover:text-white/60'
+          }`}
+          title="Search"
+        >
+          <SearchIcon className="w-7 h-7" />
+          {activeTab === 'search' && (
+            <motion.div layoutId="nav-glow" className="absolute inset-0 bg-emerald-500/20 blur-xl rounded-full -z-10" />
+          )}
+        </button>
+
+        <button 
+          onClick={() => setActiveTab('chat')}
+          className={`relative p-2 transition-all hover:scale-110 active:scale-95 ${
+            activeTab === 'chat' ? 'text-emerald-500' : 'text-white/30 hover:text-white/60'
+          }`}
+          title="Chat"
+        >
+          <MessageSquare className="w-7 h-7" />
+          {activeTab === 'chat' && (
+            <motion.div layoutId="nav-glow" className="absolute inset-0 bg-emerald-500/20 blur-xl rounded-full -z-10" />
+          )}
+        </button>
+
         <button 
           onClick={() => {
-            setActiveTab('dashboard');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            setActiveTab('notifications');
+            setHasNewNotifications(false);
           }}
-          className={`p-3.5 rounded-xl transition-all ${
-            activeTab === 'dashboard' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-white/40 hover:text-white/60'
+          className={`relative p-2 transition-all hover:scale-110 active:scale-95 ${
+            activeTab === 'notifications' ? 'text-emerald-500' : 'text-white/30 hover:text-white/60'
           }`}
-          title="Timer"
+          title="Notifications"
         >
-          <TimerIcon className="w-6 h-6" />
+          <Bell className="w-7 h-7" />
+          {hasNewNotifications && (
+            <div className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#050505] shadow-[0_0_10px_rgba(239,68,68,0.5)]" />
+          )}
+          {activeTab === 'notifications' && (
+            <motion.div layoutId="nav-glow" className="absolute inset-0 bg-emerald-500/20 blur-xl rounded-full -z-10" />
+          )}
         </button>
+
         <button 
-          onClick={() => scrollToSection('syllabus-section')}
-          className={`p-3.5 rounded-xl transition-all ${
-            activeTab === 'dashboard' ? 'text-white/40 hover:text-white/60' : 'text-white/40'
+          onClick={() => setActiveTab('profile')}
+          className={`relative p-0.5 transition-all hover:scale-110 active:scale-95 rounded-full border-2 ${
+            activeTab === 'profile' ? 'border-emerald-500' : 'border-transparent'
           }`}
-          title="Syllabus"
+          title="Profile"
         >
-          <BookOpen className="w-6 h-6" />
+          <StaticAvatar 
+            src={userProfile.photoURL}
+            alt={userProfile.displayName || 'User'}
+            className="w-8 h-8 rounded-full"
+          />
+          {activeTab === 'profile' && (
+            <motion.div layoutId="nav-glow" className="absolute inset-0 bg-emerald-500/20 blur-xl rounded-full -z-10" />
+          )}
         </button>
       </nav>
 
@@ -141,6 +188,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onUpdateSyllabus, o
                 </div>
               </div>
             )}
+
+            {activeTab === 'discover' && <Discover />}
+            {activeTab === 'search' && <Search />}
+            {activeTab === 'chat' && <Chat />}
+            {activeTab === 'notifications' && <Notifications />}
 
             {activeTab === 'profile' && (
               <Profile 
