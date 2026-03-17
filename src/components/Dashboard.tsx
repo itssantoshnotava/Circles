@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Timer } from './Timer';
 import { SyllabusTracker } from './SyllabusTracker';
 import { ExamCountdown } from './ExamCountdown';
+import { Profile } from './Profile';
 import { AppState } from '../types';
-import { Timer as TimerIcon, BookOpen, LogOut, Settings } from 'lucide-react';
+import { Timer as TimerIcon, BookOpen, LogOut, User } from 'lucide-react';
 
 interface DashboardProps {
   state: AppState;
@@ -13,7 +14,7 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ state, onUpdateSyllabus, onLogout }) => {
-  const [activeTab, setActiveTab] = useState<'timer' | 'syllabus'>('timer');
+  const [activeTab, setActiveTab] = useState<'timer' | 'syllabus' | 'profile'>('timer');
 
   return (
     <div className="min-h-screen bg-[#050505] text-white flex flex-col">
@@ -34,7 +35,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onUpdateSyllabus, o
         <button 
           onClick={onLogout}
           className="glass p-2.5 rounded-xl text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-all border-white/5"
-          title="Reset Data"
+          title="Logout"
         >
           <LogOut className="w-4 h-4" />
         </button>
@@ -60,6 +61,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onUpdateSyllabus, o
           <BookOpen className="w-4 h-4" />
           <span>Syllabus</span>
         </button>
+        <button 
+          onClick={() => setActiveTab('profile')}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl transition-all font-bold text-sm ${
+            activeTab === 'profile' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-white/40 hover:text-white/60'
+          }`}
+        >
+          <User className="w-4 h-4" />
+          <span>Profile</span>
+        </button>
       </nav>
 
       {/* Main Content */}
@@ -72,7 +82,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onUpdateSyllabus, o
             exit={{ opacity: 0, scale: 1.02 }}
             className="w-full max-w-2xl flex flex-col items-center space-y-12"
           >
-            {activeTab === 'timer' ? (
+            {activeTab === 'timer' && (
               <>
                 <Timer />
                 {state.onboardingData.preparingForCompetitive && (
@@ -86,10 +96,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onUpdateSyllabus, o
                   </div>
                 )}
               </>
-            ) : (
+            )}
+            
+            {activeTab === 'syllabus' && (
               <SyllabusTracker 
                 syllabus={state.syllabus} 
                 onToggleChapter={onUpdateSyllabus} 
+              />
+            )}
+
+            {activeTab === 'profile' && (
+              <Profile 
+                onboardingData={state.onboardingData} 
+                onLogout={onLogout}
               />
             )}
           </motion.div>

@@ -74,6 +74,21 @@ export const signInWithGoogle = async () => {
   }
 };
 
+export const getCurrentUserProfile = () => {
+  const user = auth.currentUser;
+  const isGuest = isGuestUser();
+  
+  console.log("User data fetched");
+  
+  return {
+    uid: user?.uid || 'guest',
+    displayName: user?.displayName || (isGuest ? 'Guest User' : null),
+    email: user?.email || (isGuest ? 'guest@circles.app' : null),
+    photoURL: user?.photoURL || null,
+    isGuest
+  };
+};
+
 // Seed function to generate 100 codes (to be called once)
 export const seedAccessCodes = async () => {
   const codesRef = collection(db, "accessCodes");

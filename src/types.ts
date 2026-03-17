@@ -41,3 +41,11 @@ export interface ExamDate {
   date: string; // ISO string
   sessions?: { name: string; date: string }[];
 }
+
+export interface UserProfile {
+  uid: string;
+  displayName: string | null;
+  email: string | null;
+  photoURL: string | null;
+  isGuest: boolean;
+}
