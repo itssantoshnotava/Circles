@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { GlassCard } from './GlassCard';
 import { Button } from './Button';
-import { User, Mail, GraduationCap, BookOpen, Target, LogOut, Edit2, Check, X } from 'lucide-react';
+import { User, Mail, GraduationCap, BookOpen, Target, LogOut, Edit2, Check, X, Calendar } from 'lucide-react';
 import { OnboardingData, UserProfile } from '../types';
 import { getCurrentUserProfile, logoutUser } from '../services/firebaseService';
 
@@ -81,14 +81,19 @@ export const Profile: React.FC<ProfileProps> = ({ onboardingData, onLogout }) =>
               </button>
             </div>
           ) : (
-            <div className="flex items-center justify-center gap-3">
-              <h1 className="text-3xl font-black tracking-tighter">{user.displayName || 'Anonymous User'}</h1>
-              <button 
-                onClick={() => setIsEditing(true)}
-                className="p-1 text-white/20 hover:text-emerald-400 transition-colors"
-              >
-                <Edit2 className="w-4 h-4" />
-              </button>
+            <div className="flex flex-col items-center gap-1">
+              <div className="flex items-center justify-center gap-3">
+                <h1 className="text-3xl font-black tracking-tighter">{user.displayName || 'Anonymous User'}</h1>
+                <button 
+                  onClick={() => setIsEditing(true)}
+                  className="p-1 text-white/20 hover:text-emerald-400 transition-colors"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </button>
+              </div>
+              {user.username && (
+                <span className="text-emerald-500 font-black tracking-widest text-sm uppercase">@{user.username}</span>
+              )}
             </div>
           )}
           <div className="flex items-center justify-center gap-2 text-white/40 font-medium">
@@ -108,6 +113,12 @@ export const Profile: React.FC<ProfileProps> = ({ onboardingData, onLogout }) =>
           <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
           <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">{onboardingData.stream}</span>
         </div>
+        {user.dob && (
+          <div className="glass px-4 py-2 rounded-full border-white/5 shadow-lg shadow-orange-500/5 flex items-center gap-2">
+            <Calendar className="w-3 h-3 text-orange-500" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-orange-400">{new Date(user.dob).toLocaleDateString()}</span>
+          </div>
+        )}
         {onboardingData.competitiveExams.map(exam => (
           <div key={exam} className="glass px-4 py-2 rounded-full border-white/5 shadow-lg shadow-purple-500/5 flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />

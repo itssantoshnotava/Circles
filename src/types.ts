@@ -32,7 +32,9 @@ export interface OnboardingData {
 
 export interface AppState {
   onboardingComplete: boolean;
+  profileSetupComplete: boolean;
   onboardingData: OnboardingData;
+  userProfile: UserProfile | null;
   syllabus: Subject[];
 }
 
@@ -45,7 +47,10 @@ export interface ExamDate {
 export interface UserProfile {
   uid: string;
   displayName: string | null;
+  username: string | null;
   email: string | null;
   photoURL: string | null;
+  dob: string | null;
   isGuest: boolean;
+  profileSetupComplete: boolean;
 }

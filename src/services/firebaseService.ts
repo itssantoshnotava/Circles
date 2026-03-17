@@ -83,10 +83,76 @@ export const getCurrentUserProfile = () => {
   return {
     uid: user?.uid || 'guest',
     displayName: user?.displayName || (isGuest ? 'Guest User' : null),
+    username: localStorage.getItem('circles_username') || null,
     email: user?.email || (isGuest ? 'guest@circles.app' : null),
-    photoURL: user?.photoURL || null,
-    isGuest
+    photoURL: localStorage.getItem('circles_profile_pic') || user?.photoURL || null,
+    dob: localStorage.getItem('circles_dob') || null,
+    isGuest,
+    profileSetupComplete: localStorage.getItem('circles_profile_setup_complete') === 'true'
   };
+};
+
+export const checkUsernameUnique = async (username: string): Promise<boolean> => {
+  const usersRef = collection(db, "users");
+  const q = query(usersRef, where("username", "==", username.toLowerCase()));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.empty;
+};
+
+export const saveUserProfile = async (userId: string, profileData: { name: string; username: string; dob: string; profilePic: string }) => {
+  console.log("Profile setup started");
+  try {
+    const userRef = doc(db, "users", userId);
+    const data = {
+      uid: userId,
+      displayName: profileData.name,
+      username: profileData.username.toLowerCase(),
+      dob: profileData.dob,
+      photoURL: profileData.profilePic,
+      profileSetupComplete: true,
+      updatedAt: serverTimestamp()
+    };
+    
+    await setDoc(userRef, data, { merge: true });
+    
+    localStorage.setItem('circles_username', data.username);
+    localStorage.setItem('circles_dob', data.dob);
+    localStorage.setItem('circles_profile_pic', data.photoURL);
+    localStorage.setItem('circles_profile_setup_complete', 'true');
+    
+    console.log("Username set:", data.username);
+    console.log("Profile completed");
+    return data;
+  } catch (error) {
+    console.error("Error saving user profile:", error);
+    throw error;
+  }
+};
+
+export const uploadToCloudinary = async (file: File): Promise<string> => {
+  const cloudName = (import.meta as any).env.VITE_CLOUDINARY_CLOUD_NAME;
+  const uploadPreset = (import.meta as any).env.VITE_CLOUDINARY_UPLOAD_PRESET;
+
+  if (!cloudName || !uploadPreset) {
+    console.warn("Cloudinary not configured. Falling back to local URL.");
+    return URL.createObjectURL(file);
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', uploadPreset);
+
+  try {
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+    const data = await response.json();
+    return data.secure_url;
+  } catch (error) {
+    console.error("Error uploading to Cloudinary:", error);
+    throw error;
+  }
 };
 
 // Seed function to generate 100 codes (to be called once)

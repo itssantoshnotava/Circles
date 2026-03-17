@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Onboarding } from './components/Onboarding';
 import { Dashboard } from './components/Dashboard';
 import { AccessGate } from './components/AccessGate';
-import { AppState, OnboardingData, Subject } from './types';
+import { ProfileSetup } from './components/ProfileSetup';
+import { AppState, OnboardingData, Subject, UserProfile } from './types';
 import { getInitialSyllabus } from './data/syllabus';
 import { 
   getOrCreateUserId, 
@@ -11,7 +12,8 @@ import {
   isAccessGranted, 
   getAuthUser, 
   seedAccessCodes,
-  logoutUser
+  logoutUser,
+  getCurrentUserProfile
 } from './services/firebaseService';
 
 const STORAGE_KEY = 'circles_app_state';
@@ -21,6 +23,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string>('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -32,11 +35,17 @@ export default function App() {
 
       const authUser = getAuthUser();
       setIsAuthenticated(!!authUser);
+      
+      if (authUser) {
+        const profile = getCurrentUserProfile();
+        setUserProfile(profile);
+      }
 
       const savedState = localStorage.getItem(STORAGE_KEY);
       if (savedState) {
         try {
-          setState(JSON.parse(savedState));
+          const parsed = JSON.parse(savedState);
+          setState(parsed);
         } catch (e) {
           console.error('Failed to parse saved state', e);
         }
@@ -55,6 +64,13 @@ export default function App() {
 
   const handleAccessGranted = () => {
     setIsAuthenticated(true);
+    const profile = getCurrentUserProfile();
+    setUserProfile(profile);
+  };
+
+  const handleProfileSetupComplete = (data: { name: string; username: string; dob: string; profilePic: string }) => {
+    const profile = getCurrentUserProfile();
+    setUserProfile(profile);
   };
 
   const handleOnboardingComplete = async (data: OnboardingData) => {
@@ -68,9 +84,11 @@ export default function App() {
       data.cuetSubjects
     );
 
-    const newState = {
+    const newState: AppState = {
       onboardingComplete: true,
+      profileSetupComplete: true,
       onboardingData: data,
+      userProfile: userProfile,
       syllabus: initialSyllabus,
     };
 
@@ -118,8 +136,13 @@ export default function App() {
   const handleLogout = async () => {
     await logoutUser();
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem('circles_username');
+    localStorage.removeItem('circles_dob');
+    localStorage.removeItem('circles_profile_pic');
+    localStorage.removeItem('circles_profile_setup_complete');
     setState(null);
     setIsAuthenticated(false);
+    setUserProfile(null);
   };
 
   if (loading) {
@@ -132,6 +155,10 @@ export default function App() {
 
   if (!isAuthenticated) {
     return <AccessGate onAccessGranted={handleAccessGranted} />;
+  }
+
+  if (!userProfile?.profileSetupComplete && !userProfile?.isGuest) {
+    return <ProfileSetup onComplete={handleProfileSetupComplete} />;
   }
 
   if (!state || !state.onboardingComplete) {
