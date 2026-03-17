@@ -54,3 +54,27 @@ export interface UserProfile {
   isGuest: boolean;
   profileSetupComplete: boolean;
 }
+
+export interface Room {
+  roomId: string;
+  hostId: string;
+  participants: string[];
+  createdAt: any;
+  active: boolean;
+  timerState?: {
+    timeLeft: number;
+    isRunning: boolean;
+    mode: 'pomodoro' | 'shortBreak' | 'longBreak';
+    lastUpdated: any;
+  };
+}
+
+export interface RoomMessage {
+  id: string;
+  roomId: string;
+  userId: string;
+  username: string;
+  profilePic: string;
+  message: string;
+  createdAt: any;
+}

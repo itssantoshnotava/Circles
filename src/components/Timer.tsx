@@ -5,25 +5,70 @@ import { Button } from './Button';
 import { Play, Pause, RotateCcw, Timer as TimerIcon, Clock, Hourglass } from 'lucide-react';
 import { getOrCreateUserId, saveTimerMode } from '../services/firebaseService';
 
-type TimerMode = 'pomodoro' | 'stopwatch' | 'countdown';
+type TimerMode = 'pomodoro' | 'shortBreak' | 'longBreak' | 'stopwatch' | 'countdown';
 
-export const Timer: React.FC = () => {
+interface TimerProps {
+  isRoomMode?: boolean;
+  roomTimerState?: any;
+  isHost?: boolean;
+  onTimerSync?: (state: any) => void;
+}
+
+const MODE_TIMES: Record<string, number> = {
+  pomodoro: 25 * 60,
+  shortBreak: 5 * 60,
+  longBreak: 15 * 60,
+  stopwatch: 0,
+  countdown: 25 * 60
+};
+
+export const Timer: React.FC<TimerProps> = ({ 
+  isRoomMode = false, 
+  roomTimerState, 
+  isHost = false, 
+  onTimerSync 
+}) => {
   const [mode, setMode] = useState<TimerMode>('pomodoro');
   const [isActive, setIsActive] = useState(false);
   const [time, setTime] = useState(25 * 60); // Default 25 min
   const [customTime, setCustomTime] = useState(25);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Sync from room state (for participants)
+  useEffect(() => {
+    if (isRoomMode && !isHost && roomTimerState) {
+      setTime(roomTimerState.timeLeft);
+      setIsActive(roomTimerState.isRunning);
+      setMode(roomTimerState.mode || 'pomodoro');
+    }
+  }, [isRoomMode, isHost, roomTimerState]);
+
   useEffect(() => {
     if (isActive) {
       timerRef.current = setInterval(() => {
         setTime((prevTime) => {
-          if (mode === 'stopwatch') return prevTime + 1;
-          if (prevTime <= 0) {
+          const newTime = mode === 'stopwatch' ? prevTime + 1 : Math.max(0, prevTime - 1);
+          
+          if (mode !== 'stopwatch' && newTime === 0) {
             setIsActive(false);
-            return 0;
+            // Auto-transition logic
+            if (mode === 'pomodoro') {
+              handleModeChange('shortBreak');
+            } else if (mode === 'shortBreak' || mode === 'longBreak') {
+              handleModeChange('pomodoro');
+            }
           }
-          return prevTime - 1;
+
+          // Sync to room if host
+          if (isRoomMode && isHost && onTimerSync) {
+            onTimerSync({
+              timeLeft: newTime,
+              isRunning: isActive,
+              mode
+            });
+          }
+
+          return newTime;
         });
       }, 1000);
     } else {
@@ -32,18 +77,40 @@ export const Timer: React.FC = () => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isActive, mode]);
+  }, [isActive, mode, isRoomMode, isHost, onTimerSync]);
 
-  const toggleTimer = () => setIsActive(!isActive);
+  const toggleTimer = () => {
+    if (isRoomMode && !isHost) return;
+    const nextActive = !isActive;
+    setIsActive(nextActive);
+    
+    if (isRoomMode && isHost && onTimerSync) {
+      onTimerSync({
+        timeLeft: time,
+        isRunning: nextActive,
+        mode
+      });
+    }
+  };
 
   const resetTimer = () => {
+    if (isRoomMode && !isHost) return;
     setIsActive(false);
-    if (mode === 'pomodoro') setTime(25 * 60);
-    else if (mode === 'stopwatch') setTime(0);
-    else setTime(customTime * 60);
+    let newTime = MODE_TIMES[mode] || (customTime * 60);
+    
+    setTime(newTime);
+
+    if (isRoomMode && isHost && onTimerSync) {
+      onTimerSync({
+        timeLeft: newTime,
+        isRunning: false,
+        mode
+      });
+    }
   };
 
   const handleModeChange = (newMode: TimerMode) => {
+    if (isRoomMode && !isHost) return;
     // 1. Stop current timer
     setIsActive(false);
     if (timerRef.current) clearInterval(timerRef.current);
@@ -52,12 +119,17 @@ export const Timer: React.FC = () => {
     setMode(newMode);
     
     // 3. Initialize new mode state cleanly
-    if (newMode === 'pomodoro') {
-      setTime(25 * 60);
-    } else if (newMode === 'stopwatch') {
-      setTime(0);
-    } else {
-      setTime(customTime * 60);
+    let newTime = MODE_TIMES[newMode] || (customTime * 60);
+    
+    setTime(newTime);
+
+    // Sync to room if host
+    if (isRoomMode && isHost && onTimerSync) {
+      onTimerSync({
+        timeLeft: newTime,
+        isRunning: false,
+        mode: newMode
+      });
     }
 
     // Silent Firebase sync
@@ -77,21 +149,23 @@ export const Timer: React.FC = () => {
       {/* Background Glow */}
       <div className="absolute -top-20 -left-20 w-64 h-64 bg-emerald-500/5 blur-[100px] rounded-full group-hover:bg-emerald-500/10 transition-all duration-700" />
       
-      <div className="flex bg-white/5 p-1.5 rounded-2xl w-full">
-        {(['pomodoro', 'stopwatch', 'countdown'] as TimerMode[]).map((m) => (
+      <div className="flex bg-white/5 p-1.5 rounded-2xl w-full overflow-x-auto no-scrollbar">
+        {(['pomodoro', 'shortBreak', 'longBreak', 'stopwatch', 'countdown'] as TimerMode[]).map((m) => (
           <button
             key={m}
             onClick={() => handleModeChange(m)}
-            className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${
+            className={`flex-1 py-3 px-4 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all duration-300 flex items-center justify-center gap-2 whitespace-nowrap ${
               mode === m 
                 ? 'bg-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.4)] scale-105 z-10' 
                 : 'text-white/40 hover:text-white/70 hover:bg-white/5'
             }`}
           >
-            {m === 'pomodoro' && <TimerIcon className="w-4 h-4" />}
-            {m === 'stopwatch' && <Clock className="w-4 h-4" />}
-            {m === 'countdown' && <Hourglass className="w-4 h-4" />}
-            <span className="capitalize">{m}</span>
+            {m === 'pomodoro' && <TimerIcon className="w-3 h-3" />}
+            {m === 'shortBreak' && <RotateCcw className="w-3 h-3" />}
+            {m === 'longBreak' && <RotateCcw className="w-3 h-3" />}
+            {m === 'stopwatch' && <Clock className="w-3 h-3" />}
+            {m === 'countdown' && <Hourglass className="w-3 h-3" />}
+            <span>{m.replace(/([A-Z])/g, ' $1')}</span>
           </button>
         ))}
       </div>
@@ -118,7 +192,7 @@ export const Timer: React.FC = () => {
               strokeDasharray={2 * Math.PI * 150}
               initial={{ strokeDashoffset: 0 }}
               animate={{ 
-                strokeDashoffset: (2 * Math.PI * 150) * (1 - time / (mode === 'pomodoro' ? 25 * 60 : (customTime || 1) * 60)) 
+                strokeDashoffset: (2 * Math.PI * 150) * (1 - time / (MODE_TIMES[mode] || (customTime * 60))) 
               }}
               className="text-emerald-500 drop-shadow-[0_0_15px_rgba(16,185,129,0.4)]"
             />

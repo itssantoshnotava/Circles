@@ -1,7 +1,8 @@
 import { db, auth } from "../firebase";
-import { doc, setDoc, updateDoc, getDoc, collection, query, where, getDocs, serverTimestamp, writeBatch } from "firebase/firestore";
+import { doc, setDoc, updateDoc, getDoc, collection, query, where, getDocs, serverTimestamp, writeBatch, onSnapshot, arrayUnion, arrayRemove, orderBy, limit, addDoc } from "firebase/firestore";
 import { signInWithPopup, GoogleAuthProvider, signOut } from "firebase/auth";
 import { v4 as uuidv4 } from 'uuid';
+import { Room, RoomMessage, UserProfile } from "../types";
 
 const USER_ID_KEY = 'circles_user_id';
 const ACCESS_GRANTED_KEY = 'circles_access_granted';
@@ -326,4 +327,122 @@ export const saveTimerMode = async (userId: string, mode: string) => {
   } catch (error) {
     console.error("Error saving timer mode to Firebase:", error);
   }
+};
+
+// --- ROOMS SYSTEM ---
+
+export const createRoom = async (userId: string): Promise<string> => {
+  const roomId = Math.floor(10000 + Math.random() * 90000).toString();
+  const roomRef = doc(db, "rooms", roomId);
+  
+  const roomData: Room = {
+    roomId,
+    hostId: userId,
+    participants: [userId],
+    createdAt: serverTimestamp(),
+    active: true,
+    timerState: {
+      timeLeft: 25 * 60,
+      isRunning: false,
+      mode: 'pomodoro',
+      lastUpdated: serverTimestamp()
+    }
+  };
+
+  await setDoc(roomRef, roomData);
+  console.log(`Room ${roomId} created by ${userId}`);
+  return roomId;
+};
+
+export const joinRoom = async (userId: string, roomId: string): Promise<boolean> => {
+  const roomRef = doc(db, "rooms", roomId);
+  const roomDoc = await getDoc(roomRef);
+
+  if (!roomDoc.exists() || !roomDoc.data().active) {
+    throw new Error("Room not found or inactive");
+  }
+
+  await updateDoc(roomRef, {
+    participants: arrayUnion(userId)
+  });
+  
+  console.log(`User ${userId} joined room ${roomId}`);
+  return true;
+};
+
+export const leaveRoom = async (userId: string, roomId: string) => {
+  const roomRef = doc(db, "rooms", roomId);
+  await updateDoc(roomRef, {
+    participants: arrayRemove(userId)
+  });
+  console.log(`User ${userId} left room ${roomId}`);
+};
+
+export const kickUser = async (roomId: string, userId: string) => {
+  const roomRef = doc(db, "rooms", roomId);
+  await updateDoc(roomRef, {
+    participants: arrayRemove(userId)
+  });
+  console.log(`User ${userId} kicked from room ${roomId}`);
+};
+
+export const syncRoomTimer = async (roomId: string, timerState: any) => {
+  const roomRef = doc(db, "rooms", roomId);
+  await updateDoc(roomRef, {
+    timerState: {
+      ...timerState,
+      lastUpdated: serverTimestamp()
+    }
+  });
+};
+
+export const sendRoomMessage = async (roomId: string, userId: string, username: string, profilePic: string, message: string) => {
+  const messagesRef = collection(db, "roomMessages");
+  await addDoc(messagesRef, {
+    roomId,
+    userId,
+    username,
+    profilePic,
+    message,
+    createdAt: serverTimestamp()
+  });
+};
+
+export const listenToRoom = (roomId: string, callback: (room: Room) => void) => {
+  const roomRef = doc(db, "rooms", roomId);
+  return onSnapshot(roomRef, (doc) => {
+    if (doc.exists()) {
+      callback(doc.data() as Room);
+    }
+  });
+};
+
+export const listenToRoomMessages = (roomId: string, callback: (messages: RoomMessage[]) => void) => {
+  const messagesRef = collection(db, "roomMessages");
+  const q = query(
+    messagesRef, 
+    where("roomId", "==", roomId), 
+    orderBy("createdAt", "asc"),
+    limit(100)
+  );
+
+  return onSnapshot(q, (snapshot) => {
+    const messages = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as RoomMessage));
+    callback(messages);
+  });
+};
+
+export const getUserProfiles = async (userIds: string[]): Promise<UserProfile[]> => {
+  if (userIds.length === 0) return [];
+  
+  const usersRef = collection(db, "users");
+  // Firestore 'in' query limit is 10 (or 30 in some cases), but let's assume small rooms for now.
+  // For larger rooms, we'd need to chunk this.
+  const q = query(usersRef, where("uid", "in", userIds));
+  const snapshot = await getDocs(q);
+  
+  return snapshot.docs.map(doc => doc.data() as UserProfile);
 };

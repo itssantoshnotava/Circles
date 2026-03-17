@@ -1,0 +1,89 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "username": { "type": "string" },
+        "email": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "dob": { "type": "string" },
+        "isGuest": { "type": "boolean" },
+        "profileSetupComplete": { "type": "boolean" },
+        "selectedTimerMode": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid"]
+    },
+    "Room": {
+      "title": "Room",
+      "description": "Study room information",
+      "type": "object",
+      "properties": {
+        "roomId": { "type": "string" },
+        "hostId": { "type": "string" },
+        "participants": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "active": { "type": "boolean" },
+        "timerState": {
+          "type": "object",
+          "properties": {
+            "timeLeft": { "type": "number" },
+            "isRunning": { "type": "boolean" },
+            "mode": { "type": "string", "enum": ["pomodoro", "shortBreak", "longBreak"] },
+            "lastUpdated": { "type": "string", "format": "date-time" }
+          }
+        }
+      },
+      "required": ["roomId", "hostId", "participants", "createdAt", "active"]
+    },
+    "RoomMessage": {
+      "title": "RoomMessage",
+      "description": "Chat message in a room",
+      "type": "object",
+      "properties": {
+        "roomId": { "type": "string" },
+        "userId": { "type": "string" },
+        "username": { "type": "string" },
+        "profilePic": { "type": "string" },
+        "message": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["roomId", "userId", "username", "message", "createdAt"]
+    },
+    "Progress": {
+      "title": "Progress",
+      "description": "User progress tracker",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "type": { "type": "string" },
+        "subject": { "type": "string" },
+        "completedChapters": { "type": "array", "items": { "type": "string" } },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "type", "subject", "completedChapters"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profiles"
+    },
+    "/rooms/{roomId}": {
+      "schema": "Room",
+      "description": "Study rooms"
+    },
+    "/roomMessages/{messageId}": {
+      "schema": "RoomMessage",
+      "description": "Room chat messages"
+    },
+    "/progress/{progressId}": {
+      "schema": "Progress",
+      "description": "User progress data"
+    }
+  }
+}

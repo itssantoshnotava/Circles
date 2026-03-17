@@ -6,10 +6,12 @@ import { ExamCountdown } from './ExamCountdown';
 import { Profile } from './Profile';
 import { Discover } from './Discover';
 import { Search } from './Search';
+import { Rooms } from './Rooms';
+import { RoomScreen } from './RoomScreen';
 import { Chat, Notifications } from './Placeholders';
 import { StaticAvatar } from './StaticAvatar';
 import { AppState } from '../types';
-import { Timer as TimerIcon, BookOpen, LogOut, Home, Search as SearchIcon, MessageSquare, Bell, User } from 'lucide-react';
+import { Timer as TimerIcon, BookOpen, LogOut, Home, Search as SearchIcon, MessageSquare, Bell, User, Users } from 'lucide-react';
 import { getCurrentUserProfile } from '../services/firebaseService';
 
 interface DashboardProps {
@@ -18,12 +20,13 @@ interface DashboardProps {
   onLogout: () => void;
 }
 
-type Tab = 'dashboard' | 'discover' | 'search' | 'chat' | 'notifications' | 'profile';
+type Tab = 'dashboard' | 'discover' | 'search' | 'chat' | 'notifications' | 'profile' | 'rooms';
 
 export const Dashboard: React.FC<DashboardProps> = ({ state, onUpdateSyllabus, onLogout }) => {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [userProfile, setUserProfile] = useState(getCurrentUserProfile());
   const [hasNewNotifications, setHasNewNotifications] = useState(true);
+  const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
 
   useEffect(() => {
     console.log("Dashboard loaded");
@@ -33,6 +36,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onUpdateSyllabus, o
     setUserProfile(getCurrentUserProfile());
   }, [activeTab]);
 
+  const handleEnterRoom = (roomId: string) => {
+    setCurrentRoomId(roomId);
+    setActiveTab('rooms');
+  };
+
+  const handleLeaveRoom = () => {
+    setCurrentRoomId(null);
+    setActiveTab('rooms');
+  };
+
   return (
     <div className="min-h-screen bg-[#050505] text-white flex flex-col">
       {/* Background Gradients */}
@@ -41,7 +54,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onUpdateSyllabus, o
 
       {/* Minimal Logo - Clickable to go back to Dashboard */}
       <button 
-        onClick={() => setActiveTab('dashboard')}
+        onClick={() => {
+          setActiveTab('dashboard');
+          setCurrentRoomId(null);
+        }}
         className="fixed top-8 left-8 flex items-center gap-3 opacity-40 hover:opacity-100 transition-opacity z-50 group"
       >
         <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -68,9 +84,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onUpdateSyllabus, o
       </div>
 
       {/* Minimal Navigation - Icon Only */}
-      <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 glass px-6 py-3 flex items-center gap-8 z-50 border-white/10 shadow-2xl rounded-3xl">
+      <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 glass px-6 py-3 flex items-center gap-6 z-50 border-white/10 shadow-2xl rounded-3xl">
         <button 
-          onClick={() => setActiveTab('discover')}
+          onClick={() => {
+            setActiveTab('discover');
+            setCurrentRoomId(null);
+          }}
           className={`relative p-2 transition-all hover:scale-110 active:scale-95 ${
             activeTab === 'discover' ? 'text-emerald-500' : 'text-white/30 hover:text-white/60'
           }`}
@@ -83,7 +102,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onUpdateSyllabus, o
         </button>
 
         <button 
-          onClick={() => setActiveTab('search')}
+          onClick={() => {
+            setActiveTab('search');
+            setCurrentRoomId(null);
+          }}
           className={`relative p-2 transition-all hover:scale-110 active:scale-95 ${
             activeTab === 'search' ? 'text-emerald-500' : 'text-white/30 hover:text-white/60'
           }`}
@@ -96,7 +118,25 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onUpdateSyllabus, o
         </button>
 
         <button 
-          onClick={() => setActiveTab('chat')}
+          onClick={() => {
+            setActiveTab('rooms');
+          }}
+          className={`relative p-2 transition-all hover:scale-110 active:scale-95 ${
+            activeTab === 'rooms' ? 'text-emerald-500' : 'text-white/30 hover:text-white/60'
+          }`}
+          title="Rooms"
+        >
+          <Users className="w-7 h-7" />
+          {activeTab === 'rooms' && (
+            <motion.div layoutId="nav-glow" className="absolute inset-0 bg-emerald-500/20 blur-xl rounded-full -z-10" />
+          )}
+        </button>
+
+        <button 
+          onClick={() => {
+            setActiveTab('chat');
+            setCurrentRoomId(null);
+          }}
           className={`relative p-2 transition-all hover:scale-110 active:scale-95 ${
             activeTab === 'chat' ? 'text-emerald-500' : 'text-white/30 hover:text-white/60'
           }`}
@@ -112,6 +152,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onUpdateSyllabus, o
           onClick={() => {
             setActiveTab('notifications');
             setHasNewNotifications(false);
+            setCurrentRoomId(null);
           }}
           className={`relative p-2 transition-all hover:scale-110 active:scale-95 ${
             activeTab === 'notifications' ? 'text-emerald-500' : 'text-white/30 hover:text-white/60'
@@ -128,7 +169,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onUpdateSyllabus, o
         </button>
 
         <button 
-          onClick={() => setActiveTab('profile')}
+          onClick={() => {
+            setActiveTab('profile');
+            setCurrentRoomId(null);
+          }}
           className={`relative p-0.5 transition-all hover:scale-110 active:scale-95 rounded-full border-2 ${
             activeTab === 'profile' ? 'border-emerald-500' : 'border-transparent'
           }`}
@@ -191,6 +235,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onUpdateSyllabus, o
 
             {activeTab === 'discover' && <Discover />}
             {activeTab === 'search' && <Search />}
+            {activeTab === 'rooms' && (
+              currentRoomId ? (
+                <RoomScreen 
+                  roomId={currentRoomId} 
+                  userId={userProfile.uid} 
+                  userProfile={userProfile}
+                  onLeave={handleLeaveRoom}
+                />
+              ) : (
+                <Rooms userId={userProfile.uid} onEnterRoom={handleEnterRoom} />
+              )
+            )}
             {activeTab === 'chat' && <Chat />}
             {activeTab === 'notifications' && <Notifications />}
 
