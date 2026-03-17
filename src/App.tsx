@@ -1,9 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Onboarding } from './components/Onboarding';
 import { Dashboard } from './components/Dashboard';
+import { AccessGate } from './components/AccessGate';
 import { AppState, OnboardingData, Subject } from './types';
 import { getInitialSyllabus } from './data/syllabus';
-import { getOrCreateUserId, saveOnboardingData, updateChapterProgress } from './services/firebaseService';
+import { 
+  getOrCreateUserId, 
+  saveOnboardingData, 
+  updateChapterProgress, 
+  isAccessGranted, 
+  getAuthUser, 
+  seedAccessCodes,
+  logoutUser
+} from './services/firebaseService';
 
 const STORAGE_KEY = 'circles_app_state';
 
@@ -11,20 +20,31 @@ export default function App() {
   const [state, setState] = useState<AppState | null>(null);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string>('');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    const id = getOrCreateUserId();
-    setUserId(id);
+    const init = async () => {
+      // Seed codes for testing (only runs if empty)
+      await seedAccessCodes();
 
-    const savedState = localStorage.getItem(STORAGE_KEY);
-    if (savedState) {
-      try {
-        setState(JSON.parse(savedState));
-      } catch (e) {
-        console.error('Failed to parse saved state', e);
+      const id = getOrCreateUserId();
+      setUserId(id);
+
+      const authUser = getAuthUser();
+      setIsAuthenticated(!!authUser);
+
+      const savedState = localStorage.getItem(STORAGE_KEY);
+      if (savedState) {
+        try {
+          setState(JSON.parse(savedState));
+        } catch (e) {
+          console.error('Failed to parse saved state', e);
+        }
       }
-    }
-    setLoading(false);
+      setLoading(false);
+    };
+
+    init();
   }, []);
 
   useEffect(() => {
@@ -32,6 +52,10 @@ export default function App() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     }
   }, [state]);
+
+  const handleAccessGranted = () => {
+    setIsAuthenticated(true);
+  };
 
   const handleOnboardingComplete = async (data: OnboardingData) => {
     const initialSyllabus = getInitialSyllabus(
@@ -91,9 +115,11 @@ export default function App() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logoutUser();
     localStorage.removeItem(STORAGE_KEY);
     setState(null);
+    setIsAuthenticated(false);
   };
 
   if (loading) {
@@ -102,6 +128,10 @@ export default function App() {
         <div className="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
       </div>
     );
+  }
+
+  if (!isAuthenticated) {
+    return <AccessGate onAccessGranted={handleAccessGranted} />;
   }
 
   if (!state || !state.onboardingComplete) {
