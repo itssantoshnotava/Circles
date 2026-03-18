@@ -12,7 +12,6 @@ service cloud.firestore {
     //   - uid: string (required)
     //   - name: string
     //   - username: string
-    //   - email: string (PII)
     //   - photoURL: string
     //   - dob: string
     //   - isGuest: bool
@@ -48,6 +47,30 @@ service cloud.firestore {
     //   - subject: string (required)
     //   - completedChapters: list (required)
     //   - updatedAt: timestamp
+    //
+    // Collection: friendRequests
+    // Document ID: auto-generated
+    // Fields:
+    //   - fromUserId: string (required)
+    //   - toUserId: string (required)
+    //   - status: string (required, 'pending' | 'accepted' | 'rejected')
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: friends
+    // Document ID: auto-generated
+    // Fields:
+    //   - userId: string (required)
+    //   - friendId: string (required)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: notifications
+    // Document ID: auto-generated
+    // Fields:
+    //   - type: string (required)
+    //   - fromUserId: string (required)
+    //   - toUserId: string (required)
+    //   - message: string (required)
+    //   - createdAt: timestamp (required)
     //
     // ===============================================================
 
@@ -94,7 +117,6 @@ service cloud.firestore {
     function isValidUser(data) {
       return hasRequiredFields(['uid']) &&
              data.uid == request.auth.uid &&
-             (!('email' in data) || isValidEmail(data.email)) &&
              (!('name' in data) || (data.name is string && data.name.size() < 100)) &&
              (!('username' in data) || (data.username is string && data.username.size() < 50));
     }
@@ -120,13 +142,32 @@ service cloud.firestore {
              data.completedChapters is list && data.completedChapters.size() < 500;
     }
 
+    function isValidFriendRequest(data) {
+      return hasRequiredFields(['fromUserId', 'toUserId', 'status', 'createdAt']) &&
+             data.fromUserId == request.auth.uid &&
+             data.toUserId is string &&
+             data.status in ['pending', 'accepted', 'rejected'];
+    }
+
+    function isValidFriend(data) {
+      return hasRequiredFields(['userId', 'friendId', 'createdAt']) &&
+             (data.userId == request.auth.uid || data.friendId == request.auth.uid);
+    }
+
+    function isValidNotification(data) {
+      return hasRequiredFields(['type', 'fromUserId', 'toUserId', 'message', 'createdAt']) &&
+             data.type is string &&
+             data.fromUserId is string &&
+             data.toUserId is string &&
+             data.message is string && data.message.size() < 500;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
 
     match /users/{userId} {
-      // Users can only read their own profile because it contains PII (email)
-      allow read: if isOwner(userId) || isAdmin();
+      allow read: if isAuthenticated();
       allow create: if isOwner(userId) && isValidUser(request.resource.data);
       allow update: if isOwner(userId) && isValidUser(request.resource.data);
     }
@@ -151,6 +192,27 @@ service cloud.firestore {
       allow create: if isAuthenticated() && isValidProgress(request.resource.data);
       allow update: if isAuthenticated() && isValidProgress(request.resource.data) && request.auth.uid == resource.data.userId;
       allow delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    match /friendRequests/{requestId} {
+      allow read: if isAuthenticated() && (request.auth.uid == resource.data.fromUserId || request.auth.uid == resource.data.toUserId);
+      allow create: if isAuthenticated() && isValidFriendRequest(request.resource.data);
+      allow update: if isAuthenticated() && (request.auth.uid == resource.data.fromUserId || request.auth.uid == resource.data.toUserId) && request.resource.data.status in ['pending', 'accepted', 'rejected'];
+      allow delete: if isAuthenticated() && (request.auth.uid == resource.data.fromUserId || request.auth.uid == resource.data.toUserId);
+    }
+
+    match /friends/{friendshipId} {
+      allow read: if isAuthenticated() && (request.auth.uid == resource.data.userId || request.auth.uid == resource.data.friendId);
+      allow create: if isAuthenticated() && isValidFriend(request.resource.data);
+      allow update: if false;
+      allow delete: if isAuthenticated() && (request.auth.uid == resource.data.userId || request.auth.uid == resource.data.friendId);
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && request.auth.uid == resource.data.toUserId;
+      allow create: if isAuthenticated() && isValidNotification(request.resource.data);
+      allow update: if isAuthenticated() && request.auth.uid == resource.data.toUserId;
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.toUserId;
     }
 
     // Default deny

@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { GlassCard } from './GlassCard';
 import { Button } from './Button';
-import { User, Mail, GraduationCap, BookOpen, Target, LogOut, Edit2, Check, X, Calendar } from 'lucide-react';
+import { User, Mail, GraduationCap, BookOpen, Target, LogOut, Edit2, Check, X, Calendar, Users } from 'lucide-react';
 import { OnboardingData, UserProfile } from '../types';
-import { getCurrentUserProfile, logoutUser } from '../services/firebaseService';
+import { getCurrentUserProfile, logoutUser, listenToFriends, getUserProfiles } from '../services/firebaseService';
 
 interface ProfileProps {
   onboardingData: OnboardingData;
@@ -15,13 +15,35 @@ export const Profile: React.FC<ProfileProps> = ({ onboardingData, onLogout }) =>
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState('');
+  const [friends, setFriends] = useState<any[]>([]);
+  const [friendProfiles, setFriendProfiles] = useState<UserProfile[]>([]);
 
   useEffect(() => {
     console.log("Profile loaded");
     const profile = getCurrentUserProfile();
     setUser(profile);
     setEditedName(profile.displayName || '');
+
+    if (profile.uid) {
+      const unsub = listenToFriends(profile.uid, (friendsData) => {
+        setFriends(friendsData);
+      });
+      return () => unsub();
+    }
   }, []);
+
+  useEffect(() => {
+    const fetchFriendProfiles = async () => {
+      if (friends.length > 0) {
+        const friendIds = friends.map(f => f.friendId);
+        const profiles = await getUserProfiles(friendIds);
+        setFriendProfiles(profiles);
+      } else {
+        setFriendProfiles([]);
+      }
+    };
+    fetchFriendProfiles();
+  }, [friends]);
 
   const handleLogout = async () => {
     await logoutUser();
@@ -126,6 +148,35 @@ export const Profile: React.FC<ProfileProps> = ({ onboardingData, onLogout }) =>
           </div>
         ))}
       </div>
+
+      {/* Friends Section */}
+      <GlassCard className="p-6 border-white/5 space-y-4">
+        <div className="flex items-center gap-3 text-emerald-400">
+          <Users className="w-5 h-5" />
+          <span id="fr5" className="text-xs font-black uppercase tracking-widest">Friends ({friendProfiles.length})</span>
+        </div>
+        {friendProfiles.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {friendProfiles.map(friend => (
+              <div key={friend.uid} className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/5">
+                <div className="w-10 h-10 rounded-full overflow-hidden bg-white/10 flex items-center justify-center">
+                  {friend.photoURL ? (
+                    <img src={friend.photoURL} alt={friend.displayName || 'User'} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                    <User className="w-5 h-5 text-white/40" />
+                  )}
+                </div>
+                <div>
+                  <p className="font-bold text-sm tracking-tight">{friend.displayName || 'Anonymous'}</p>
+                  <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest">@{friend.username}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-white/40 text-sm italic">No friends yet. Go to Search to find study partners!</p>
+        )}
+      </GlassCard>
 
       {/* Info Section: Detailed Data */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

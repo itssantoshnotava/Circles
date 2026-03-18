@@ -7,6 +7,13 @@ import { getOrCreateUserId, saveTimerMode } from '../services/firebaseService';
 
 type TimerMode = 'pomodoro' | 'stopwatch' | 'countdown';
 
+interface CompletedSession {
+  id: string;
+  mode: TimerMode;
+  duration: number;
+  completedAt: number;
+}
+
 interface TimerProps {
   isRoomMode?: boolean;
   roomTimerState?: any;
@@ -32,6 +39,25 @@ export const Timer: React.FC<TimerProps> = ({
   const [customTime, setCustomTime] = useState(25);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+  const [history, setHistory] = useState<CompletedSession[]>(() => {
+    const saved = localStorage.getItem('circles_timer_history');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const addSessionToHistory = React.useCallback((completedMode: TimerMode, duration: number) => {
+    const newSession: CompletedSession = {
+      id: Math.random().toString(36).substr(2, 9),
+      mode: completedMode,
+      duration,
+      completedAt: Date.now()
+    };
+    setHistory(prev => {
+      const updated = [newSession, ...prev].slice(0, 10);
+      localStorage.setItem('circles_timer_history', JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
   // Sync from room state (for participants)
   useEffect(() => {
     if (isRoomMode && !isHost && roomTimerState) {
@@ -50,6 +76,7 @@ export const Timer: React.FC<TimerProps> = ({
           if (mode !== 'stopwatch' && newTime === 0) {
             setIsActive(false);
             console.log("Timer finished");
+            addSessionToHistory(mode, MODE_TIMES[mode] || (customTime * 60));
           }
 
           // Sync to room if host
@@ -70,7 +97,7 @@ export const Timer: React.FC<TimerProps> = ({
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isActive, mode, isRoomMode, isHost, onTimerSync]);
+  }, [isActive, mode, isRoomMode, isHost, onTimerSync, customTime, addSessionToHistory]);
 
   const toggleTimer = () => {
     if (isRoomMode && !isHost) return;
@@ -88,6 +115,11 @@ export const Timer: React.FC<TimerProps> = ({
 
   const resetTimer = () => {
     if (isRoomMode && !isHost) return;
+    
+    if (mode === 'stopwatch' && time > 0) {
+      addSessionToHistory('stopwatch', time);
+    }
+
     setIsActive(false);
     let newTime = MODE_TIMES[mode] || (customTime * 60);
     
@@ -105,6 +137,11 @@ export const Timer: React.FC<TimerProps> = ({
   const handleModeChange = (newMode: TimerMode) => {
     if (isRoomMode && !isHost) return;
     console.log(`Switching timer mode to: ${newMode}`);
+    
+    if (mode === 'stopwatch' && time > 0) {
+      addSessionToHistory('stopwatch', time);
+    }
+
     // 1. Stop current timer
     setIsActive(false);
     if (timerRef.current) clearInterval(timerRef.current);
@@ -243,6 +280,39 @@ export const Timer: React.FC<TimerProps> = ({
         >
           <RotateCcw className="w-6 h-6" />
         </Button>
+      </div>
+
+      <div className="w-full mt-8 border-t border-white/10 pt-6">
+        <h3 className="text-white/60 text-xs font-bold uppercase tracking-widest mb-4 flex items-center gap-2">
+          <Clock className="w-4 h-4" />
+          Recent Sessions
+        </h3>
+        {history.length === 0 ? (
+          <p className="text-white/30 text-sm text-center py-4">No completed sessions yet.</p>
+        ) : (
+          <div className="space-y-2 max-h-40 overflow-y-auto no-scrollbar pr-2">
+            {history.map(session => (
+              <div key={session.id} className="flex items-center justify-between bg-white/5 p-3 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white/10 rounded-md">
+                    {session.mode === 'pomodoro' && <TimerIcon className="w-4 h-4 text-emerald-400" />}
+                    {session.mode === 'stopwatch' && <Clock className="w-4 h-4 text-blue-400" />}
+                    {session.mode === 'countdown' && <Hourglass className="w-4 h-4 text-purple-400" />}
+                  </div>
+                  <div>
+                    <p className="text-white text-sm font-medium capitalize">{session.mode}</p>
+                    <p className="text-white/40 text-xs">
+                      {new Date(session.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-white font-mono font-bold">
+                  {formatTime(session.duration)}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </GlassCard>
   );

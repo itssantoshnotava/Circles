@@ -240,7 +240,7 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({ roomId, userId, userProf
                   alt={msg.username} 
                   className="w-8 h-8 rounded-xl flex-shrink-0"
                 />
-                <div className={`space-y-1 max-w-[80%] ${msg.userId === userId ? 'items-end' : ''}`}>
+                <div className={`space-y-1 max-w-[80%] flex flex-col ${msg.userId === userId ? 'items-end' : 'items-start'}`}>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-black text-white/40">@{msg.username}</span>
                     {msg.userId === room.hostId && <Crown className="w-2 h-2 text-emerald-500" />}

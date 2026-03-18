@@ -8,11 +8,12 @@ import { Discover } from './Discover';
 import { Search } from './Search';
 import { Rooms } from './Rooms';
 import { RoomScreen } from './RoomScreen';
-import { Chat, Notifications } from './Placeholders';
+import { Chat } from './Placeholders';
+import { Notifications } from './Notifications';
 import { StaticAvatar } from './StaticAvatar';
 import { AppState } from '../types';
 import { Timer as TimerIcon, BookOpen, LogOut, Home, Search as SearchIcon, MessageSquare, Bell, User, Users } from 'lucide-react';
-import { getCurrentUserProfile } from '../services/firebaseService';
+import { getCurrentUserProfile, listenToFriendRequests, listenToNotifications } from '../services/firebaseService';
 
 interface DashboardProps {
   state: AppState;
@@ -25,7 +26,7 @@ type Tab = 'dashboard' | 'discover' | 'search' | 'chat' | 'notifications' | 'pro
 export const Dashboard: React.FC<DashboardProps> = ({ state, onUpdateSyllabus, onLogout }) => {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [userProfile, setUserProfile] = useState(getCurrentUserProfile());
-  const [hasNewNotifications, setHasNewNotifications] = useState(true);
+  const [hasNewNotifications, setHasNewNotifications] = useState(false);
   const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -35,6 +36,27 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onUpdateSyllabus, o
     setUserProfile(getCurrentUserProfile());
     console.log("Profile loaded");
   }, [activeTab]);
+
+  useEffect(() => {
+    if (!userProfile?.uid) return;
+
+    const unsubRequests = listenToFriendRequests(userProfile.uid, (requests) => {
+      if (requests.length > 0 && activeTab !== 'notifications') {
+        setHasNewNotifications(true);
+      }
+    });
+
+    const unsubNotifs = listenToNotifications(userProfile.uid, (notifs) => {
+      if (notifs.length > 0 && activeTab !== 'notifications') {
+        setHasNewNotifications(true);
+      }
+    });
+
+    return () => {
+      unsubRequests();
+      unsubNotifs();
+    };
+  }, [userProfile?.uid, activeTab]);
 
   const handleEnterRoom = (roomId: string) => {
     setCurrentRoomId(roomId);
@@ -244,7 +266,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onUpdateSyllabus, o
             )}
 
             {activeTab === 'discover' && <Discover />}
-            {activeTab === 'search' && <Search />}
+            {activeTab === 'search' && <Search currentUser={userProfile} />}
             {activeTab === 'rooms' && (
               currentRoomId ? (
                 <RoomScreen 

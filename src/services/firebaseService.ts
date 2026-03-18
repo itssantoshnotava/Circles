@@ -111,10 +111,19 @@ export const checkUserProfileExists = async (userId: string): Promise<boolean> =
       
       // Sync to localStorage
       if (data.username) localStorage.setItem('circles_username', data.username);
-      if (data.dob) localStorage.setItem('circles_dob', data.dob);
       if (data.photoURL) localStorage.setItem('circles_profile_pic', data.photoURL);
       if (data.displayName) localStorage.setItem('circles_display_name', data.displayName);
       if (data.profileSetupComplete) localStorage.setItem('circles_profile_setup_complete', 'true');
+      
+      // Fetch private data if it's the current user
+      if (auth.currentUser?.uid === userId) {
+        const privateRef = doc(db, "users", userId, "private", "data");
+        const privateDoc = await getDoc(privateRef);
+        if (privateDoc.exists()) {
+          const privateData = privateDoc.data();
+          if (privateData.dob) localStorage.setItem('circles_dob', privateData.dob);
+        }
+      }
       
       return true;
     }
@@ -137,28 +146,40 @@ export const checkUsernameUnique = async (username: string): Promise<boolean> =>
 export const saveUserProfile = async (userId: string, profileData: { name: string; username: string; dob: string; profilePic: string }) => {
   console.log("Profile setup started");
   try {
+    const batch = writeBatch(db);
+    
+    // Public profile
     const userRef = doc(db, "users", userId);
-    const data = {
+    const publicData = {
       uid: userId,
       displayName: profileData.name,
       username: profileData.username.toLowerCase(),
-      dob: profileData.dob,
       photoURL: profileData.profilePic,
       profileSetupComplete: true,
       updatedAt: serverTimestamp()
     };
+    batch.set(userRef, publicData, { merge: true });
+
+    // Private data (PII)
+    const privateRef = doc(db, "users", userId, "private", "data");
+    const privateData = {
+      email: auth.currentUser?.email || null,
+      dob: profileData.dob,
+      updatedAt: serverTimestamp()
+    };
+    batch.set(privateRef, privateData, { merge: true });
+
+    await batch.commit();
     
-    await setDoc(userRef, data, { merge: true });
-    
-    localStorage.setItem('circles_display_name', data.displayName);
-    localStorage.setItem('circles_username', data.username);
-    localStorage.setItem('circles_dob', data.dob);
-    localStorage.setItem('circles_profile_pic', data.photoURL);
+    localStorage.setItem('circles_display_name', profileData.name);
+    localStorage.setItem('circles_username', profileData.username.toLowerCase());
+    localStorage.setItem('circles_dob', profileData.dob);
+    localStorage.setItem('circles_profile_pic', profileData.profilePic);
     localStorage.setItem('circles_profile_setup_complete', 'true');
     
-    console.log("Username set:", data.username);
+    console.log("Username set:", profileData.username.toLowerCase());
     console.log("Profile completed");
-    return data;
+    return publicData;
   } catch (error) {
     console.error("Error saving user profile:", error);
     throw error;
@@ -396,13 +417,13 @@ export const syncRoomTimer = async (roomId: string, timerState: any) => {
   });
 };
 
-export const sendRoomMessage = async (roomId: string, userId: string, username: string, profilePic: string, message: string) => {
+export const sendRoomMessage = async (roomId: string, userId: string, username: string, profilePic: string | null | undefined, message: string) => {
   const messagesRef = collection(db, "roomMessages");
   await addDoc(messagesRef, {
     roomId,
     userId,
     username,
-    profilePic,
+    profilePic: profilePic || null,
     message,
     createdAt: serverTimestamp()
   });
@@ -421,17 +442,21 @@ export const listenToRoomMessages = (roomId: string, callback: (messages: RoomMe
   const messagesRef = collection(db, "roomMessages");
   const q = query(
     messagesRef, 
-    where("roomId", "==", roomId), 
-    orderBy("createdAt", "asc"),
-    limit(100)
+    where("roomId", "==", roomId)
   );
 
   return onSnapshot(q, (snapshot) => {
     const messages = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
-    } as RoomMessage));
+    } as RoomMessage)).sort((a, b) => {
+      const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+      const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+      return timeA - timeB;
+    });
     callback(messages);
+  }, (error) => {
+    console.error("Error listening to room messages:", error);
   });
 };
 
@@ -445,4 +470,144 @@ export const getUserProfiles = async (userIds: string[]): Promise<UserProfile[]>
   const snapshot = await getDocs(q);
   
   return snapshot.docs.map(doc => doc.data() as UserProfile);
+};
+
+// --- FRIEND SYSTEM ---
+
+export const searchUsers = async (searchTerm: string): Promise<UserProfile[]> => {
+  if (!searchTerm.trim()) return [];
+  const usersRef = collection(db, "users");
+  const q = query(
+    usersRef,
+    where("username", ">=", searchTerm.toLowerCase()),
+    where("username", "<=", searchTerm.toLowerCase() + "\uf8ff"),
+    limit(20)
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => doc.data() as UserProfile);
+};
+
+export const sendFriendRequest = async (fromUserId: string, toUserId: string, fromUsername: string) => {
+  if (fromUserId === toUserId) return;
+  
+  // Check if request already exists
+  const requestsRef = collection(db, "friendRequests");
+  const q = query(
+    requestsRef,
+    where("fromUserId", "==", fromUserId),
+    where("toUserId", "==", toUserId),
+    where("status", "==", "pending")
+  );
+  const snapshot = await getDocs(q);
+  if (!snapshot.empty) return;
+
+  await addDoc(requestsRef, {
+    fromUserId,
+    toUserId,
+    status: "pending",
+    createdAt: serverTimestamp()
+  });
+
+  // Add notification
+  const notificationsRef = collection(db, "notifications");
+  await addDoc(notificationsRef, {
+    type: "friend_request",
+    fromUserId,
+    toUserId,
+    message: `@${fromUsername} sent you a friend request`,
+    createdAt: serverTimestamp(),
+    read: false
+  });
+  
+  console.log("Friend request sent");
+};
+
+export const acceptFriendRequest = async (requestId: string, fromUserId: string, toUserId: string) => {
+  const batch = writeBatch(db);
+  
+  // Update request status
+  const requestRef = doc(db, "friendRequests", requestId);
+  batch.update(requestRef, { status: "accepted" });
+  
+  // Add to friends collection (both ways)
+  const friendsRef = collection(db, "friends");
+  batch.set(doc(friendsRef), {
+    userId: fromUserId,
+    friendId: toUserId,
+    createdAt: serverTimestamp()
+  });
+  batch.set(doc(friendsRef), {
+    userId: toUserId,
+    friendId: fromUserId,
+    createdAt: serverTimestamp()
+  });
+  
+  await batch.commit();
+  console.log("Friend request accepted");
+  console.log("Friend added");
+};
+
+export const rejectFriendRequest = async (requestId: string) => {
+  const requestRef = doc(db, "friendRequests", requestId);
+  await updateDoc(requestRef, { status: "rejected" });
+};
+
+export const getFriendshipStatus = async (userId: string, otherUserId: string): Promise<'none' | 'pending_sent' | 'pending_received' | 'friends'> => {
+  if (userId === otherUserId) return 'none';
+
+  // Check if friends
+  const friendsRef = collection(db, "friends");
+  const qFriends = query(friendsRef, where("userId", "==", userId), where("friendId", "==", otherUserId));
+  const snapshotFriends = await getDocs(qFriends);
+  if (!snapshotFriends.empty) return 'friends';
+
+  // Check if request sent
+  const requestsRef = collection(db, "friendRequests");
+  const qSent = query(requestsRef, where("fromUserId", "==", userId), where("toUserId", "==", otherUserId), where("status", "==", "pending"));
+  const snapshotSent = await getDocs(qSent);
+  if (!snapshotSent.empty) return 'pending_sent';
+
+  // Check if request received
+  const qReceived = query(requestsRef, where("fromUserId", "==", otherUserId), where("toUserId", "==", userId), where("status", "==", "pending"));
+  const snapshotReceived = await getDocs(qReceived);
+  if (!snapshotReceived.empty) return 'pending_received';
+
+  return 'none';
+};
+
+export const listenToNotifications = (userId: string, callback: (notifications: any[]) => void) => {
+  const notificationsRef = collection(db, "notifications");
+  const q = query(
+    notificationsRef,
+    where("toUserId", "==", userId)
+  );
+  return onSnapshot(q, (snapshot) => {
+    const notifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a: any, b: any) => {
+      const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+      const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+      return timeB - timeA; // Descending order
+    }).slice(0, 50);
+    callback(notifications);
+  }, (error) => {
+    console.error("Error listening to notifications:", error);
+  });
+};
+
+export const getFriends = async (userId: string): Promise<UserProfile[]> => {
+  const friendsRef = collection(db, "friends");
+  const q = query(friendsRef, where("userId", "==", userId));
+  const snapshot = await getDocs(q);
+  const friendIds = snapshot.docs.map(doc => doc.data().friendId);
+  
+  if (friendIds.length === 0) return [];
+  
+  // Fetch profiles
+  return getUserProfiles(friendIds);
+};
+
+export const getPendingRequests = async (userId: string): Promise<any[]> => {
+  const requestsRef = collection(db, "friendRequests");
+  const q = query(requestsRef, where("toUserId", "==", userId), where("status", "==", "pending"));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };

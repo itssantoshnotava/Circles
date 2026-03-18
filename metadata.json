@@ -1,5 +1,5 @@
 {
-  "name": "Circles",
-  "description": "A minimalistic, dark-themed study companion with glassmorphism UI, featuring onboarding, syllabus tracking, and a versatile timer system.",
+  "name": "FriendsApp",
+  "description": "A simple friend system with requests, acceptance, and basic friend list.",
   "requestFramePermissions": []
 }
